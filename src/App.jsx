@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
 import { parseBarcode, generateBarcodeRange, validateQty } from "./lib/barcodeParser";
+import { getTodayDDMMYY } from "./lib/dateUtils";
 import { supabase } from "./lib/supabaseClient";
 import ScanForm from "./components/ScanForm";
 import ProductInfo from "./components/ProductInfo";
 import ResultList from "./components/ResultList";
+import TransactionHistory from "./components/TransactionHistory";
 import LoginPage from "./components/LoginPage";
 import "./App.css";
 
@@ -14,8 +16,13 @@ function App() {
   const [formKey, setFormKey] = useState(0);
   const [productCode, setProductCode] = useState("");
   const [result, setResult] = useState(null);
+  const [generated, setGenerated] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [view, setView] = useState("scan");
+  const [transactions, setTransactions] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -40,9 +47,48 @@ function App() {
     setSaveError("");
   }, []);
 
+  const handleViewHistory = useCallback(async () => {
+    setView("history");
+    setLoadingHistory(true);
+    setHistoryError("");
+
+    const { data, error } = await supabase
+      .from("scan_logs")
+      .select("trx_code, product_name, product_code, production_date, shift, operator, admin_user, created_at")
+      .not("trx_code", "is", null)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setHistoryError(error.message);
+      setLoadingHistory(false);
+      return;
+    }
+
+    const grouped = {};
+    for (const row of data || []) {
+      const key = row.trx_code;
+      if (!grouped[key]) {
+        grouped[key] = { ...row, qty: 0 };
+      }
+      grouped[key].qty++;
+    }
+
+    const transactions = Object.values(grouped).sort((a, b) =>
+      new Date(b.created_at) - new Date(a.created_at)
+    );
+
+    setTransactions(transactions);
+    setLoadingHistory(false);
+  }, []);
+
+  const handleBackToScan = useCallback(() => {
+    setView("scan");
+  }, []);
+
   const handleGenerate = useCallback(async ({ barcode, barcodeDate, barcodeShift, productionDate, shift: formShift, qty, operator }) => {
     setResult(null);
     setSaveError("");
+    setGenerated(null);
 
     const parsed = parseBarcode(barcode);
     if (!parsed) {
@@ -64,11 +110,8 @@ function App() {
       return;
     }
 
-    setSaving(true);
-
     if (!supabase) {
       setSaveError("Koneksi database tidak tersedia. Periksa environment variables.");
-      setSaving(false);
       return;
     }
 
@@ -88,13 +131,41 @@ function App() {
     if (existing && existing.length > 0) {
       const dups = existing.map((r) => r.barcode).join(", ");
       setSaveError(`Gagal: barcode berikut sudah ada — ${dups}`);
-      setSaving(false);
       return;
     }
 
+    const todayDDMMYY = getTodayDDMMYY();
+    const trxCode = "TRX-" + todayDDMMYY + "-" + Date.now().toString(36).slice(-5).toUpperCase();
+
+    setGenerated({
+      barcode,
+      barcodeDate,
+      barcodeShift,
+      productionDate,
+      shift: formShift,
+      qty,
+      operator,
+      productCode: parsed.productCode,
+      productName,
+      range,
+      trxCode,
+    });
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    if (!generated) return;
+
+    setSaving(true);
+    setSaveError("");
+
+    const {
+      barcodeDate, barcodeShift, productionDate,
+      shift: formShift, operator, productCode, productName, range, trxCode,
+    } = generated;
+
     const rows = range.map((bc) => ({
       barcode: bc,
-      product_code: parsed.productCode,
+      product_code: productCode,
       product_name: productName,
       barcode_date: barcodeDate,
       barcode_shift: barcodeShift,
@@ -102,27 +173,31 @@ function App() {
       shift: formShift,
       serial_number: bc.slice(-3),
       operator: operator || null,
+      admin_user: user,
+      trx_code: trxCode,
     }));
 
-    const { error } = await supabase.from("scan_logs").insert(rows);
+    const { error: scanError } = await supabase.from("scan_logs").insert(rows);
 
     setSaving(false);
 
-    if (error) {
-      setSaveError("Gagal menyimpan: " + error.message);
+    if (scanError) {
+      setSaveError("Gagal menyimpan: " + scanError.message);
       return;
     }
 
     setResult({
       productName,
-      productCode: parsed.productCode,
+      productCode,
       barcodeDate,
       productionDate,
       shift: formShift,
       count: range.length,
       barcodes: range,
+      trxCode,
     });
-  }, []);
+    setGenerated(null);
+  }, [generated, user]);
 
   if (!user) {
     return <LoginPage onLogin={handleLogin} />;
@@ -132,6 +207,20 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>Scan Barcode Produksi</h1>
+        <nav className="app-nav">
+          <button
+            className={"nav-btn" + (view === "scan" ? " active" : "")}
+            onClick={handleBackToScan}
+          >
+            Scan
+          </button>
+          <button
+            className={"nav-btn" + (view === "history" ? " active" : "")}
+            onClick={handleViewHistory}
+          >
+            Riwayat
+          </button>
+        </nav>
         <div className="user-badge">
           <span>{user}</span>
           <button className="btn-logout" onClick={handleLogout}>Logout</button>
@@ -139,14 +228,27 @@ function App() {
       </header>
 
       <main>
-        <ScanForm key={formKey} onGenerate={handleGenerate} saving={saving} />
-
-        {productCode && <ProductInfo productCode={productCode} />}
-
-        {saving && <div className="status status-loading">Menyimpan data ke database...</div>}
-        {saveError && <div className="status status-error">{saveError}</div>}
-
-        <ResultList result={result} onNewTransaction={handleNewTransaction} />
+        {view === "scan" ? (
+          <>
+            <ScanForm
+              key={formKey}
+              generated={generated}
+              onGenerate={handleGenerate}
+              onSave={handleSave}
+              saving={saving}
+              saveError={saveError}
+              result={result}
+              onNewTransaction={handleNewTransaction}
+            />
+          </>
+        ) : (
+          <TransactionHistory
+            transactions={transactions}
+            loading={loadingHistory}
+            error={historyError}
+            onBackToScan={handleBackToScan}
+          />
+        )}
       </main>
     </div>
   );

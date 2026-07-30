@@ -98,113 +98,136 @@ export default function LoginPage({ onLogin }) {
   }
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <div className="login-icon">&#9776;</div>
-        <h1>Scan Barcode Produksi</h1>
+    <div className="container d-flex align-items-center justify-content-center vh-100 login-page">
+      <div className="card shadow-sm auth-card auth-hero" style={{ width: '100%' }}>
+        <div className="card-body">
+          <div className="text-center mb-3">
+            <div className="login-icon"><i className="bi bi-box-seam fs-4"/></div>
+            <h1 className="auth-title">Scan Barcode Produksi</h1>
+            <div className="auth-sub">Masuk untuk melanjutkan aplikasi produksi</div>
+          </div>
 
-        {mode === "login" ? (
-          <form onSubmit={handleLogin}>
-            <p className="login-subtitle">Masuk untuk melanjutkan</p>
+          {mode === "login" ? (
+            <form onSubmit={handleLogin}>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="username">Username</label>
-              <input
-                id="username"
-                className="form-input"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Masukkan username"
-                autoComplete="username"
-                autoFocus
-              />
-            </div>
+              <div className="mb-3">
+                <label className="form-label" htmlFor="username">Username</label>
+                <div className="input-group">
+                  <span className="input-group-text"><i className="bi bi-person-fill"/></span>
+                  <input
+                    id="username"
+                    className="form-control"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Masukkan username"
+                    autoComplete="username"
+                    autoFocus
+                  />
+                </div>
+              </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="password">Password</label>
-              <input
-                id="password"
-                className="form-input"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Masukkan password"
-                autoComplete="current-password"
-              />
-            </div>
+              <div className="mb-3">
+                <label className="form-label" htmlFor="password">Password</label>
+                <div className="input-group">
+                  <span className="input-group-text"><i className="bi bi-lock-fill"/></span>
+                  <input
+                    id="password"
+                    className="form-control"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Masukkan password"
+                    autoComplete="current-password"
+                  />
+                </div>
+              </div>
 
-            {error && <div className="status status-error">{error}</div>}
+              {error && <div className="alert alert-danger">{error}</div>}
 
-            <button className="btn btn-primary" type="submit" disabled={loading}>
-              {loading ? "Memeriksa..." : "Masuk"}
-            </button>
+              <div className="d-grid mb-2 auth-cta-wrap">
+                <button className="btn btn-primary auth-cta" type="submit" disabled={loading}>
+                  <i className="bi bi-box-arrow-in-right me-2"/>{loading ? "Memeriksa..." : "Masuk"}
+                </button>
+              </div>
 
-            <p className="login-switch">
-              Belum punya akun?{" "}
-              <button type="button" className="link-btn" onClick={() => switchMode("register")}>
-                Daftar
-              </button>
-            </p>
-          </form>
-        ) : (
-          <form onSubmit={handleRegister}>
-            <p className="login-subtitle">Daftar akun baru</p>
+              <div className="text-center small">
+                Belum punya akun?{' '}
+                <button type="button" className="btn btn-link p-0 align-baseline" onClick={() => switchMode("register")}>
+                  <i className="bi bi-person-plus me-1"/>Daftar
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleRegister}>
+              <p className="text-muted">Daftar akun baru</p>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="regUser">Username Baru</label>
-              <input
-                id="regUser"
-                className="form-input"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Buat username"
-                autoComplete="off"
-                autoFocus
-              />
-            </div>
+              <div className="mb-3">
+                <label className="form-label" htmlFor="regUser">Username Baru</label>
+                <div className="input-group">
+                  <span className="input-group-text"><i className="bi bi-person"/></span>
+                  <input
+                    id="regUser"
+                    className="form-control"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Buat username"
+                    autoComplete="off"
+                    autoFocus
+                  />
+                </div>
+              </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="regPass">Password</label>
-              <input
-                id="regPass"
-                className="form-input"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Buat password"
-                autoComplete="new-password"
-              />
-            </div>
+              <div className="mb-3">
+                <label className="form-label" htmlFor="regPass">Password</label>
+                <div className="input-group">
+                  <span className="input-group-text"><i className="bi bi-key-fill"/></span>
+                  <input
+                    id="regPass"
+                    className="form-control"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Buat password"
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="regToken">Token Registrasi</label>
-              <input
-                id="regToken"
-                className="form-input"
-                type="password"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="Masukkan token"
-              />
-              <div className="form-hint">Hubungi atasan untuk mendapatkan token</div>
-            </div>
+              <div className="mb-3">
+                <label className="form-label" htmlFor="regToken">Token Registrasi</label>
+                <div className="input-group">
+                  <span className="input-group-text"><i className="bi bi-shield-lock"/></span>
+                  <input
+                    id="regToken"
+                    className="form-control"
+                    type="password"
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    placeholder="Masukkan token"
+                  />
+                </div>
+                <div className="form-text">Hubungi atasan untuk mendapatkan token</div>
+              </div>
 
-            {error && <div className="status status-error">{error}</div>}
+              {error && <div className="alert alert-danger">{error}</div>}
 
-            <button className="btn btn-primary" type="submit" disabled={loading}>
-              {loading ? "Mendaftarkan..." : "Daftar & Masuk"}
-            </button>
+              <div className="d-grid mb-2 auth-cta-wrap">
+                <button className="btn btn-primary auth-cta" type="submit" disabled={loading}>
+                  <i className="bi bi-person-check me-2"/>{loading ? "Mendaftarkan..." : "Daftar & Masuk"}
+                </button>
+              </div>
 
-            <p className="login-switch">
-              Sudah punya akun?{" "}
-              <button type="button" className="link-btn" onClick={() => switchMode("login")}>
-                Masuk
-              </button>
-            </p>
-          </form>
-        )}
+              <div className="text-center small">
+                Sudah punya akun?{' '}
+                <button type="button" className="btn btn-link p-0 align-baseline" onClick={() => switchMode("login")}>
+                  <i className="bi bi-box-arrow-in-left me-1"/>Masuk
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );

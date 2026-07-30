@@ -15,7 +15,9 @@ CREATE TABLE scan_logs (
   production_date TEXT NOT NULL,
   shift TEXT NOT NULL,
   serial_number TEXT NOT NULL,
-  operator TEXT
+  operator TEXT,
+  admin_user TEXT,
+  trx_code TEXT
 );
 
 CREATE TABLE app_users (

@@ -37,13 +37,17 @@ export default function ProductInfo({ productCode }) {
   if (!productCode) return null;
 
   return (
-    <div className="product-info">
-      <div className="product-info-icon">P</div>
-      <div className="product-info-text">
-        <div className="label">Produk</div>
-        <div className="code">{productCode}</div>
-        <div className={`name${!loading && productName === "(kode tidak ditemukan)" ? " not-found" : ""}`}>
-          {loading ? "Mencari..." : productName}
+    <div className="card mb-3">
+      <div className="card-body d-flex align-items-center gap-3">
+        <div className="text-secondary d-flex align-items-center justify-content-center" style={{width:48,height:48}}>
+          <i className="bi bi-box-seam fs-4"/>
+        </div>
+        <div>
+          <div className="text-muted small">Produk</div>
+          <div className="fw-bold">{productCode}</div>
+          <div className={`text-${!loading && productName === "(kode tidak ditemukan)" ? "danger" : "muted"}`}>
+            {loading ? "Mencari..." : productName}
+          </div>
         </div>
       </div>
     </div>
