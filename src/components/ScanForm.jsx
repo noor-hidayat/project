@@ -48,6 +48,10 @@ export default function ScanForm({ onGenerate, saving }) {
     setDateText(raw);
   }
 
+  function handleDateFocus() {
+    if (dateRaw) setDateText(dateRaw);
+  }
+
   function handleDateBlur() {
     const digits = dateText.replace(/[^0-9]/g, "");
 
@@ -131,16 +135,17 @@ export default function ScanForm({ onGenerate, saving }) {
         <div className="form-row">
           <div className="form-group flex-1">
             <label className="form-label" htmlFor="prodDate">Tanggal Produksi</label>
-            <input
-              id="prodDate"
-              className="form-input mono"
-              type="text"
-              value={dateText}
-              onChange={handleDateChange}
-              onBlur={handleDateBlur}
-              placeholder="DDMMYY"
-              autoComplete="off"
-            />
+              <input
+                id="prodDate"
+                className="form-input mono"
+                type="text"
+                value={dateText}
+                onChange={handleDateChange}
+                onFocus={handleDateFocus}
+                onBlur={handleDateBlur}
+                placeholder="DDMMYY"
+                autoComplete="off"
+              />
             <div className="form-hint">
               Ketik 6 digit (290726) atau 8 digit (29072601) untuk isi shift otomatis
             </div>
