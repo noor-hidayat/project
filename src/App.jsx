@@ -32,7 +32,7 @@ function App() {
     setUser(null);
   }, []);
 
-  const handleGenerate = useCallback(async ({ barcode, productionDate, qty, operator }) => {
+  const handleGenerate = useCallback(async ({ barcode, productionDate, shift: formShift, qty, operator }) => {
     setResult(null);
     setSaveError("");
 
@@ -89,7 +89,7 @@ function App() {
       product_code: parsed.productCode,
       product_name: productName,
       production_date: productionDate,
-      shift: parsed.shift,
+      shift: formShift,
       serial_number: bc.slice(-3),
       operator: operator || null,
     }));
@@ -107,7 +107,7 @@ function App() {
       productName,
       productCode: parsed.productCode,
       productionDate,
-      shift: parsed.shift,
+      shift: formShift,
       count: range.length,
       barcodes: range,
     });

@@ -12,7 +12,7 @@ export default function ResultList({ result }) {
         <strong>Produk:</strong> {result.productName || result.productCode}
       </p>
       <p className="result-detail">
-        <strong>Tanggal:</strong> {result.productionDate} &middot; <strong>Shift:</strong> {result.shift}
+        <strong>Tanggal:</strong> {result.productionDate?.split("-").reverse().join("-")} &middot; <strong>Shift:</strong> {result.shift}
       </p>
       <p className="result-detail">
         <strong>Jumlah:</strong> {result.count} barcode dibuat
