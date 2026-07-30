@@ -3,24 +3,29 @@ export default function ResultList({ result }) {
 
   return (
     <div className="result-list">
-      <h3>Berhasil Disimpan</h3>
-      <p>
+      <div className="result-list-header">
+        <div className="check-icon">&#10003;</div>
+        <h3>Berhasil Disimpan</h3>
+      </div>
+
+      <p className="result-detail">
         <strong>Produk:</strong> {result.productName || result.productCode}
       </p>
-      <p>
-        <strong>Tanggal Produksi:</strong> {result.productionDate} |{" "}
-        <strong>Shift:</strong> {result.shift}
+      <p className="result-detail">
+        <strong>Tanggal:</strong> {result.productionDate} &middot; <strong>Shift:</strong> {result.shift}
       </p>
-      <p>
-        <strong>Jumlah Barcode:</strong> {result.count}
+      <p className="result-detail">
+        <strong>Jumlah:</strong> {result.count} barcode dibuat
       </p>
+
       {result.carryOver && (
-        <p className="carry-over-note">
-          <em>Ditandai sebagai carry-over dari shift {result.originalShift}, tanggal {result.originalDate}</em>
-        </p>
+        <div className="result-note">
+          Dicatat sebagai carry-over dari shift {result.originalShift}, tanggal {result.originalDate}
+        </div>
       )}
-      <details>
-        <summary>Lihat daftar barcode</summary>
+
+      <details className="result-toggle">
+        <summary>Lihat daftar {result.count} barcode</summary>
         <div className="barcode-list">
           {result.barcodes.map((bc, i) => (
             <code key={i}>{bc}</code>

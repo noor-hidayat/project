@@ -27,15 +27,17 @@ export default function CarryOverForm({ onChange }) {
 
   return (
     <div className="carry-over">
-      <label className="checkbox-label">
+      <label className="carry-over-toggle">
         <input type="checkbox" checked={enabled} onChange={handleToggle} />
-        Ini bahan sisa rollsheet (carry-over) dari shift sebelumnya?
+        <span className="carry-over-toggle-text">
+          Ini bahan sisa rollsheet (carry-over) dari shift sebelumnya
+        </span>
       </label>
 
       {enabled && (
         <div className="carry-over-fields">
           <div className="field-group">
-            <label>Tanggal Rollsheet Sisa (Asal)</label>
+            <label>Tanggal Sisa (Asal)</label>
             <input
               type="text"
               placeholder="DDMMYY"
@@ -44,17 +46,17 @@ export default function CarryOverForm({ onChange }) {
             />
           </div>
           <div className="field-group">
-            <label>Shift Rollsheet Sisa (Asal)</label>
+            <label>Shift Sisa</label>
             <input
               type="text"
-              placeholder="Contoh: 01, 02, 03"
+              placeholder="01"
               maxLength={2}
               value={fields.originalShift}
               onChange={(e) => handleField("originalShift", e.target.value)}
             />
           </div>
           <div className="field-group">
-            <label>Tanggal Digunakan (Aktual)</label>
+            <label>Tanggal Pakai (Aktual)</label>
             <input
               type="text"
               placeholder="DDMMYY"
@@ -63,10 +65,10 @@ export default function CarryOverForm({ onChange }) {
             />
           </div>
           <div className="field-group">
-            <label>Shift Digunakan (Aktual)</label>
+            <label>Shift Pakai</label>
             <input
               type="text"
-              placeholder="Contoh: 01, 02, 03"
+              placeholder="01"
               maxLength={2}
               value={fields.actualShift}
               onChange={(e) => handleField("actualShift", e.target.value)}

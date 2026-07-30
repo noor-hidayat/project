@@ -31,33 +31,43 @@ export default function LoginPage({ onLogin }) {
   return (
     <div className="login-page">
       <div className="login-card">
+        <div className="login-icon">&#9776;</div>
         <h1>Scan Barcode Produksi</h1>
-        <p className="login-subtitle">Silakan login</p>
+        <p className="login-subtitle">Masuk untuk melanjutkan</p>
+
         <form onSubmit={handleSubmit}>
-          <label htmlFor="username">Username</label>
-          <input
-            id="username"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Masukkan username"
-            autoComplete="username"
-            autoFocus
-          />
+          <div className="form-group">
+            <label className="form-label" htmlFor="username">Username</label>
+            <input
+              id="username"
+              className="form-input"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Masukkan username"
+              autoComplete="username"
+              autoFocus
+            />
+          </div>
 
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Masukkan password"
-            autoComplete="current-password"
-          />
+          <div className="form-group">
+            <label className="form-label" htmlFor="password">Password</label>
+            <input
+              id="password"
+              className="form-input"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Masukkan password"
+              autoComplete="current-password"
+            />
+          </div>
 
-          {error && <p className="error">{error}</p>}
+          {error && <div className="status status-error">{error}</div>}
 
-          <button type="submit">Login</button>
+          <button className="btn btn-primary" type="submit">
+            Masuk
+          </button>
         </form>
       </div>
     </div>

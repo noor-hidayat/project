@@ -13,7 +13,6 @@ const STORAGE_KEY = "barcode_app_user";
 function App() {
   const [user, setUser] = useState(() => sessionStorage.getItem(STORAGE_KEY));
   const [productCode, setProductCode] = useState("");
-  const [parsedInfo, setParsedInfo] = useState(null);
   const [carryOver, setCarryOver] = useState(null);
   const [result, setResult] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -52,7 +51,6 @@ function App() {
     }
 
     setProductCode(parsed.productCode);
-    setParsedInfo(parsed);
 
     const qtyError = validateQty(qty);
     if (qtyError) {
@@ -83,7 +81,7 @@ function App() {
 
     if (existing && existing.length > 0) {
       const dups = existing.map((r) => r.barcode).join(", ");
-      setSaveError(`Gagal: barcode berikut sudah ada di database — ${dups}`);
+      setSaveError(`Gagal: barcode berikut sudah ada — ${dups}`);
       setSaving(false);
       return;
     }
@@ -120,6 +118,7 @@ function App() {
       count: range.length,
       barcodes: range,
       carryOver: carryOver ? true : false,
+      originalDate: carryOver?.originalDate,
       originalShift: carryOver?.originalShift,
     });
   }, [carryOver]);
@@ -130,23 +129,23 @@ function App() {
 
   return (
     <div className="app">
-      <header>
+      <header className="app-header">
         <h1>Scan Barcode Produksi</h1>
-        <div className="user-bar">
+        <div className="user-badge">
           <span>{user}</span>
           <button className="btn-logout" onClick={handleLogout}>Logout</button>
         </div>
       </header>
 
       <main>
-        <ScanForm onGenerate={handleGenerate} />
+        <ScanForm onGenerate={handleGenerate} saving={saving} />
 
-        <ProductInfo productCode={productCode} />
+        {productCode && <ProductInfo productCode={productCode} />}
 
         <CarryOverForm onChange={setCarryOver} />
 
-        {saving && <p className="saving">Menyimpan data...</p>}
-        {saveError && <p className="error">{saveError}</p>}
+        {saving && <div className="status status-loading">Menyimpan data ke database...</div>}
+        {saveError && <div className="status status-error">{saveError}</div>}
 
         <ResultList result={result} />
       </main>

@@ -19,7 +19,7 @@ export default function ProductInfo({ productCode }) {
       .select("name")
       .eq("code", productCode)
       .single()
-      .then(({ data, error }) => {
+      .then(({ data }) => {
         if (cancelled) return;
         setLoading(false);
         if (data) {
@@ -38,10 +38,14 @@ export default function ProductInfo({ productCode }) {
 
   return (
     <div className="product-info">
-      <strong>Kode Produk:</strong> {productCode}
-      <br />
-      <strong>Nama Produk:</strong>{" "}
-      {loading ? "Mencari..." : productName}
+      <div className="product-info-icon">P</div>
+      <div className="product-info-text">
+        <div className="label">Produk</div>
+        <div className="code">{productCode}</div>
+        <div className={`name${!loading && productName === "(kode tidak ditemukan)" ? " not-found" : ""}`}>
+          {loading ? "Mencari..." : productName}
+        </div>
+      </div>
     </div>
   );
 }
