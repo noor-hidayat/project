@@ -76,6 +76,18 @@ function App() {
       .single();
     if (product) productName = product.name;
 
+    const { data: existing } = await supabase
+      .from("scan_logs")
+      .select("barcode")
+      .in("barcode", range);
+
+    if (existing && existing.length > 0) {
+      const dups = existing.map((r) => r.barcode).join(", ");
+      setSaveError(`Gagal: barcode berikut sudah ada di database — ${dups}`);
+      setSaving(false);
+      return;
+    }
+
     const rows = range.map((bc) => ({
       barcode: bc,
       product_code: parsed.productCode,
