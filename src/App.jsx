@@ -1,19 +1,39 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { parseBarcode, generateBarcodeRange, validateQty } from "./lib/barcodeParser";
 import { supabase } from "./lib/supabaseClient";
 import ScanForm from "./components/ScanForm";
 import ProductInfo from "./components/ProductInfo";
 import CarryOverForm from "./components/CarryOverForm";
 import ResultList from "./components/ResultList";
+import LoginPage from "./components/LoginPage";
 import "./App.css";
 
+const STORAGE_KEY = "barcode_app_user";
+
 function App() {
+  const [user, setUser] = useState(() => sessionStorage.getItem(STORAGE_KEY));
   const [productCode, setProductCode] = useState("");
   const [parsedInfo, setParsedInfo] = useState(null);
   const [carryOver, setCarryOver] = useState(null);
   const [result, setResult] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      sessionStorage.setItem(STORAGE_KEY, user);
+    } else {
+      sessionStorage.removeItem(STORAGE_KEY);
+    }
+  }, [user]);
+
+  const handleLogin = useCallback((username) => {
+    setUser(username);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setUser(null);
+  }, []);
 
   const handleGenerate = useCallback(async ({ barcode, qty, operator }) => {
     setResult(null);
@@ -86,10 +106,18 @@ function App() {
     });
   }, [carryOver]);
 
+  if (!user) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   return (
     <div className="app">
       <header>
         <h1>Scan Barcode Produksi</h1>
+        <div className="user-bar">
+          <span>{user}</span>
+          <button className="btn-logout" onClick={handleLogout}>Logout</button>
+        </div>
       </header>
 
       <main>
