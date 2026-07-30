@@ -1,6 +1,10 @@
 export default function ResultList({ result, onNewTransaction }) {
   if (!result) return null;
 
+  function fmt(d) {
+    return d?.split("-").reverse().join("-");
+  }
+
   return (
     <div className="result-list">
       <div className="result-list-header">
@@ -12,7 +16,10 @@ export default function ResultList({ result, onNewTransaction }) {
         <strong>Produk:</strong> {result.productName || result.productCode}
       </p>
       <p className="result-detail">
-        <strong>Tanggal:</strong> {result.productionDate?.split("-").reverse().join("-")} &middot; <strong>Shift:</strong> {result.shift}
+        <strong>Tanggal Rollsheet:</strong> {fmt(result.barcodeDate)} &middot; <strong>Shift:</strong> {result.shift}
+      </p>
+      <p className="result-detail">
+        <strong>Tanggal Produksi:</strong> {fmt(result.productionDate)}
       </p>
       <p className="result-detail">
         <strong>Jumlah:</strong> {result.count} barcode dibuat

@@ -10,15 +10,11 @@ CREATE TABLE scan_logs (
   barcode TEXT NOT NULL,
   product_code TEXT NOT NULL,
   product_name TEXT,
+  barcode_date TEXT NOT NULL,
   production_date TEXT NOT NULL,
   shift TEXT NOT NULL,
   serial_number TEXT NOT NULL,
-  operator TEXT,
-  carry_over BOOLEAN DEFAULT FALSE,
-  original_date TEXT,
-  original_shift TEXT,
-  actual_date TEXT,
-  actual_shift TEXT
+  operator TEXT
 );
 
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;

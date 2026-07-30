@@ -9,6 +9,7 @@ import {
 
 export default function ScanForm({ onGenerate, saving }) {
   const [barcode, setBarcode] = useState("");
+  const [barcodeDateInfo, setBarcodeDateInfo] = useState(null);
   const [dateText, setDateText] = useState("");
   const [dateRaw, setDateRaw] = useState("");
   const [shift, setShift] = useState("");
@@ -29,9 +30,12 @@ export default function ScanForm({ onGenerate, saving }) {
     setBarcode(value);
     const parsed = parseBarcode(value);
     if (parsed) {
+      setBarcodeDateInfo(parsed.productionDate);
       setDateRaw(parsed.productionDate);
       setDateText(ddmmyyToDDMMYYYY(parsed.productionDate));
       setShift(parsed.shift);
+    } else {
+      setBarcodeDateInfo(null);
     }
   }, []);
 
@@ -87,6 +91,7 @@ export default function ScanForm({ onGenerate, saving }) {
 
     onGenerate({
       barcode: barcode.trim(),
+      barcodeDate: ddmmyyToDateValue(barcodeDateInfo || dateRaw),
       productionDate: ddmmyyToDateValue(dateRaw),
       shift: shift.trim(),
       qty: qtyNum,
@@ -112,7 +117,11 @@ export default function ScanForm({ onGenerate, saving }) {
             placeholder="Scan atau ketik barcode..."
             autoComplete="off"
           />
-          <div className="form-hint">Scan barcode pertama dari roll</div>
+          {barcodeDateInfo && (
+            <div className="barcode-date-info">
+              Tanggal rollsheet dari barcode: <strong>{ddmmyyToDDMMYYYY(barcodeDateInfo)}</strong>
+            </div>
+          )}
         </div>
 
         <div className="form-row">
