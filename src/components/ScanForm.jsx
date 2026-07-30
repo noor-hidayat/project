@@ -10,6 +10,7 @@ import {
 export default function ScanForm({ onGenerate, saving }) {
   const [barcode, setBarcode] = useState("");
   const [barcodeDateInfo, setBarcodeDateInfo] = useState(null);
+  const [barcodeShiftInfo, setBarcodeShiftInfo] = useState(null);
   const [dateText, setDateText] = useState("");
   const [dateRaw, setDateRaw] = useState("");
   const [shift, setShift] = useState("");
@@ -31,11 +32,13 @@ export default function ScanForm({ onGenerate, saving }) {
     const parsed = parseBarcode(value);
     if (parsed) {
       setBarcodeDateInfo(parsed.productionDate);
+      setBarcodeShiftInfo(parsed.shift);
       setDateRaw(parsed.productionDate);
       setDateText(ddmmyyToDDMMYYYY(parsed.productionDate));
       setShift(parsed.shift);
     } else {
       setBarcodeDateInfo(null);
+      setBarcodeShiftInfo(null);
     }
   }, []);
 
@@ -92,6 +95,7 @@ export default function ScanForm({ onGenerate, saving }) {
     onGenerate({
       barcode: barcode.trim(),
       barcodeDate: ddmmyyToDateValue(barcodeDateInfo || dateRaw),
+      barcodeShift: barcodeShiftInfo || shift,
       productionDate: ddmmyyToDateValue(dateRaw),
       shift: shift.trim(),
       qty: qtyNum,

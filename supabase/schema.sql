@@ -11,6 +11,7 @@ CREATE TABLE scan_logs (
   product_code TEXT NOT NULL,
   product_name TEXT,
   barcode_date TEXT NOT NULL,
+  barcode_shift TEXT NOT NULL,
   production_date TEXT NOT NULL,
   shift TEXT NOT NULL,
   serial_number TEXT NOT NULL,
