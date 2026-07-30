@@ -18,12 +18,6 @@ export default function ResultList({ result }) {
         <strong>Jumlah:</strong> {result.count} barcode dibuat
       </p>
 
-      {result.carryOver && (
-        <div className="result-note">
-          Dicatat sebagai carry-over dari shift {result.originalShift}, tanggal {result.originalDate}
-        </div>
-      )}
-
       <details className="result-toggle">
         <summary>Lihat daftar {result.count} barcode</summary>
         <div className="barcode-list">

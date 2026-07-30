@@ -3,7 +3,6 @@ import { parseBarcode, generateBarcodeRange, validateQty } from "./lib/barcodePa
 import { supabase } from "./lib/supabaseClient";
 import ScanForm from "./components/ScanForm";
 import ProductInfo from "./components/ProductInfo";
-import CarryOverForm from "./components/CarryOverForm";
 import ResultList from "./components/ResultList";
 import LoginPage from "./components/LoginPage";
 import "./App.css";
@@ -13,7 +12,6 @@ const STORAGE_KEY = "barcode_app_user";
 function App() {
   const [user, setUser] = useState(() => sessionStorage.getItem(STORAGE_KEY));
   const [productCode, setProductCode] = useState("");
-  const [carryOver, setCarryOver] = useState(null);
   const [result, setResult] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -94,11 +92,6 @@ function App() {
       shift: parsed.shift,
       serial_number: bc.slice(-3),
       operator: operator || null,
-      carry_over: carryOver ? true : false,
-      original_date: carryOver?.originalDate || null,
-      original_shift: carryOver?.originalShift || null,
-      actual_date: carryOver?.actualDate || null,
-      actual_shift: carryOver?.actualShift || null,
     }));
 
     const { error } = await supabase.from("scan_logs").insert(rows);
@@ -117,11 +110,8 @@ function App() {
       shift: parsed.shift,
       count: range.length,
       barcodes: range,
-      carryOver: carryOver ? true : false,
-      originalDate: carryOver?.originalDate,
-      originalShift: carryOver?.originalShift,
     });
-  }, [carryOver]);
+  }, []);
 
   if (!user) {
     return <LoginPage onLogin={handleLogin} />;
@@ -141,8 +131,6 @@ function App() {
         <ScanForm onGenerate={handleGenerate} saving={saving} />
 
         {productCode && <ProductInfo productCode={productCode} />}
-
-        <CarryOverForm onChange={setCarryOver} />
 
         {saving && <div className="status status-loading">Menyimpan data ke database...</div>}
         {saveError && <div className="status status-error">{saveError}</div>}
