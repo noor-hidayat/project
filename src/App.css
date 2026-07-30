@@ -114,6 +114,11 @@
   color: var(--text-muted);
 }
 
+.form-input.mono {
+  font-family: ui-monospace, Consolas, monospace;
+  letter-spacing: 0.03em;
+}
+
 .form-hint {
   font-size: 0.75rem;
   color: var(--text-muted);
@@ -179,6 +184,22 @@
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+.btn-success {
+  background: var(--success);
+  color: #fff;
+  margin-top: 14px;
+}
+
+.btn-success:hover {
+  background: #047857;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+.btn-success:active {
+  transform: translateY(0);
 }
 
 /* ============= PRODUCT INFO ============= */

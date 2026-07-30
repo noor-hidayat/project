@@ -1,4 +1,4 @@
-export default function ResultList({ result }) {
+export default function ResultList({ result, onNewTransaction }) {
   if (!result) return null;
 
   return (
@@ -26,6 +26,10 @@ export default function ResultList({ result }) {
           ))}
         </div>
       </details>
+
+      <button className="btn btn-success" onClick={onNewTransaction}>
+        + Input Transaksi Baru
+      </button>
     </div>
   );
 }

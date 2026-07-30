@@ -11,6 +11,7 @@ const STORAGE_KEY = "barcode_app_user";
 
 function App() {
   const [user, setUser] = useState(() => sessionStorage.getItem(STORAGE_KEY));
+  const [formKey, setFormKey] = useState(0);
   const [productCode, setProductCode] = useState("");
   const [result, setResult] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -30,6 +31,13 @@ function App() {
 
   const handleLogout = useCallback(() => {
     setUser(null);
+  }, []);
+
+  const handleNewTransaction = useCallback(() => {
+    setFormKey((k) => k + 1);
+    setProductCode("");
+    setResult(null);
+    setSaveError("");
   }, []);
 
   const handleGenerate = useCallback(async ({ barcode, productionDate, shift: formShift, qty, operator }) => {
@@ -128,14 +136,14 @@ function App() {
       </header>
 
       <main>
-        <ScanForm onGenerate={handleGenerate} saving={saving} />
+        <ScanForm key={formKey} onGenerate={handleGenerate} saving={saving} />
 
         {productCode && <ProductInfo productCode={productCode} />}
 
         {saving && <div className="status status-loading">Menyimpan data ke database...</div>}
         {saveError && <div className="status status-error">{saveError}</div>}
 
-        <ResultList result={result} />
+        <ResultList result={result} onNewTransaction={handleNewTransaction} />
       </main>
     </div>
   );

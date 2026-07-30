@@ -9,7 +9,7 @@ import {
 
 export default function ScanForm({ onGenerate, saving }) {
   const [barcode, setBarcode] = useState("");
-  const [dateDisplay, setDateDisplay] = useState("");
+  const [dateText, setDateText] = useState("");
   const [dateRaw, setDateRaw] = useState("");
   const [shift, setShift] = useState("");
   const [qty, setQty] = useState("");
@@ -21,7 +21,7 @@ export default function ScanForm({ onGenerate, saving }) {
     barcodeRef.current?.focus();
     const today = getTodayDDMMYY();
     setDateRaw(today);
-    setDateDisplay(ddmmyyToDDMMYYYY(today));
+    setDateText(ddmmyyToDDMMYYYY(today));
     setShift(getTodayShift());
   }, []);
 
@@ -30,35 +30,32 @@ export default function ScanForm({ onGenerate, saving }) {
     const parsed = parseBarcode(value);
     if (parsed) {
       setDateRaw(parsed.productionDate);
-      setDateDisplay(ddmmyyToDDMMYYYY(parsed.productionDate));
+      setDateText(ddmmyyToDDMMYYYY(parsed.productionDate));
       setShift(parsed.shift);
     }
   }, []);
 
   function handleDateChange(e) {
     const raw = e.target.value.replace(/[^0-9]/g, "");
+    if (raw.length > 8) return;
+    setDateText(raw);
+  }
 
-    if (raw.length >= 8) {
-      const datePart = raw.slice(0, 6);
-      const shiftPart = raw.slice(6, 8);
+  function handleDateBlur() {
+    const digits = dateText.replace(/[^0-9]/g, "");
+
+    if (digits.length === 8) {
+      const datePart = digits.slice(0, 6);
+      const shiftPart = digits.slice(6, 8);
       setDateRaw(datePart);
-      setDateDisplay(ddmmyyToDDMMYYYY(datePart));
+      setDateText(ddmmyyToDDMMYYYY(datePart));
       setShift(shiftPart);
-      return;
-    }
-
-    if (raw.length === 0) {
+    } else if (digits.length === 6) {
+      setDateRaw(digits);
+      setDateText(ddmmyyToDDMMYYYY(digits));
+    } else if (digits.length === 0) {
       setDateRaw("");
-      setDateDisplay("");
-      return;
-    }
-
-    setDateRaw(raw);
-
-    if (raw.length === 6) {
-      setDateDisplay(ddmmyyToDDMMYYYY(raw));
-    } else {
-      setDateDisplay(raw);
+      setDateText("");
     }
   }
 
@@ -108,7 +105,7 @@ export default function ScanForm({ onGenerate, saving }) {
           <input
             ref={barcodeRef}
             id="barcode"
-            className="form-input"
+            className="form-input mono"
             type="text"
             value={barcode}
             onChange={(e) => handleBarcodeChange(e.target.value)}
@@ -123,10 +120,11 @@ export default function ScanForm({ onGenerate, saving }) {
             <label className="form-label" htmlFor="prodDate">Tanggal Produksi</label>
             <input
               id="prodDate"
-              className="form-input"
+              className="form-input mono"
               type="text"
-              value={dateDisplay}
+              value={dateText}
               onChange={handleDateChange}
+              onBlur={handleDateBlur}
               placeholder="DDMMYY"
               autoComplete="off"
             />
@@ -138,7 +136,7 @@ export default function ScanForm({ onGenerate, saving }) {
             <label className="form-label" htmlFor="shift">Shift</label>
             <input
               id="shift"
-              className="form-input"
+              className="form-input mono"
               type="text"
               value={shift}
               onChange={(e) => setShift(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
@@ -161,7 +159,7 @@ export default function ScanForm({ onGenerate, saving }) {
               onChange={(e) => setQty(e.target.value)}
               placeholder="Contoh: 10"
             />
-            <div className="form-hint">Range 1–500 barcode berurutan</div>
+            <div className="form-hint">Range 1–500</div>
           </div>
           <div className="form-group flex-1">
             <label className="form-label" htmlFor="operator">Operator</label>
