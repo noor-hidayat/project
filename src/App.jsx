@@ -62,6 +62,12 @@ function App() {
 
     setSaving(true);
 
+    if (!supabase) {
+      setSaveError("Koneksi database tidak tersedia. Periksa environment variables.");
+      setSaving(false);
+      return;
+    }
+
     let productName = "(kode tidak ditemukan)";
     const { data: product } = await supabase
       .from("products")
