@@ -13,15 +13,15 @@ async function hashPassword(password) {
 }
 
 export default function LoginPage({ onLogin }) {
-  const [tab, setTab] = useState("login");
+  const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function switchTab(t) {
-    setTab(t);
+  function switchMode(m) {
+    setMode(m);
     setError("");
   }
 
@@ -103,23 +103,10 @@ export default function LoginPage({ onLogin }) {
         <div className="login-icon">&#9776;</div>
         <h1>Scan Barcode Produksi</h1>
 
-        <div className="login-tabs">
-          <button
-            className={`login-tab${tab === "login" ? " active" : ""}`}
-            onClick={() => switchTab("login")}
-          >
-            Masuk
-          </button>
-          <button
-            className={`login-tab${tab === "register" ? " active" : ""}`}
-            onClick={() => switchTab("register")}
-          >
-            Daftar
-          </button>
-        </div>
-
-        {tab === "login" ? (
+        {mode === "login" ? (
           <form onSubmit={handleLogin}>
+            <p className="login-subtitle">Masuk untuk melanjutkan</p>
+
             <div className="form-group">
               <label className="form-label" htmlFor="username">Username</label>
               <input
@@ -152,9 +139,18 @@ export default function LoginPage({ onLogin }) {
             <button className="btn btn-primary" type="submit" disabled={loading}>
               {loading ? "Memeriksa..." : "Masuk"}
             </button>
+
+            <p className="login-switch">
+              Belum punya akun?{" "}
+              <button type="button" className="link-btn" onClick={() => switchMode("register")}>
+                Daftar
+              </button>
+            </p>
           </form>
         ) : (
           <form onSubmit={handleRegister}>
+            <p className="login-subtitle">Daftar akun baru</p>
+
             <div className="form-group">
               <label className="form-label" htmlFor="regUser">Username Baru</label>
               <input
@@ -200,6 +196,13 @@ export default function LoginPage({ onLogin }) {
             <button className="btn btn-primary" type="submit" disabled={loading}>
               {loading ? "Mendaftarkan..." : "Daftar & Masuk"}
             </button>
+
+            <p className="login-switch">
+              Sudah punya akun?{" "}
+              <button type="button" className="link-btn" onClick={() => switchMode("login")}>
+                Masuk
+              </button>
+            </p>
           </form>
         )}
       </div>
