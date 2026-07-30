@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-const REGISTER_TOKEN = import.meta.env.VITE_REGISTER_TOKEN || "8522";
+const REGISTER_TOKEN = "8522";
 
 async function hashPassword(password) {
   const encoder = new TextEncoder();
