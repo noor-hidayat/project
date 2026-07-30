@@ -18,9 +18,19 @@ CREATE TABLE scan_logs (
   operator TEXT
 );
 
+CREATE TABLE app_users (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  username TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL
+);
+
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scan_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_users ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "public_select_products" ON products FOR SELECT USING (true);
 CREATE POLICY "public_select_scan_logs" ON scan_logs FOR SELECT USING (true);
 CREATE POLICY "public_insert_scan_logs" ON scan_logs FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_select_app_users" ON app_users FOR SELECT USING (true);
+CREATE POLICY "public_insert_app_users" ON app_users FOR INSERT WITH CHECK (true);

@@ -424,6 +424,38 @@
   letter-spacing: -0.01em;
 }
 
+.login-tabs {
+  display: flex;
+  gap: 0;
+  margin: 20px 0 24px;
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.login-tab {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.login-tab.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.login-tab:not(.active):hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
 .login-subtitle {
   text-align: center;
   font-size: 0.85rem;
