@@ -1,9 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { parseBarcode } from "../lib/barcodeParser";
+import {
+  parseBarcodeDateToDateValue,
+  dateValueToDDMMMYYYY,
+  getTodayDateValue,
+} from "../lib/dateUtils";
 
 export default function ScanForm({ onGenerate, saving }) {
   const [barcode, setBarcode] = useState("");
-  const [productionDate, setProductionDate] = useState("");
+  const [dateValue, setDateValue] = useState(getTodayDateValue());
   const [qty, setQty] = useState("");
   const [operator, setOperator] = useState("");
   const [error, setError] = useState("");
@@ -17,7 +22,8 @@ export default function ScanForm({ onGenerate, saving }) {
     setBarcode(value);
     const parsed = parseBarcode(value);
     if (parsed) {
-      setProductionDate(parsed.productionDate);
+      const dv = parseBarcodeDateToDateValue(parsed.productionDate);
+      if (dv) setDateValue(dv);
     }
   }, []);
 
@@ -31,7 +37,7 @@ export default function ScanForm({ onGenerate, saving }) {
       return;
     }
 
-    if (!productionDate.trim()) {
+    if (!dateValue) {
       setError("Tanggal produksi harus diisi");
       return;
     }
@@ -44,7 +50,7 @@ export default function ScanForm({ onGenerate, saving }) {
 
     onGenerate({
       barcode: barcode.trim(),
-      productionDate: productionDate.trim(),
+      productionDate: dateValueToDDMMMYYYY(dateValue),
       qty: qtyNum,
       operator: operator.trim(),
     });
@@ -76,13 +82,13 @@ export default function ScanForm({ onGenerate, saving }) {
           <input
             id="prodDate"
             className="form-input"
-            type="text"
-            value={productionDate}
-            onChange={(e) => setProductionDate(e.target.value)}
-            placeholder="DDMMYY"
-            maxLength={6}
+            type="date"
+            value={dateValue}
+            onChange={(e) => setDateValue(e.target.value)}
           />
-          <div className="form-hint">Tanggal valid pemakaian. Otomatis terisi dari barcode, bisa diedit</div>
+          <div className="form-hint">
+            {dateValue ? dateValueToDDMMMYYYY(dateValue) : ""}
+          </div>
         </div>
 
         <div className="form-group">
