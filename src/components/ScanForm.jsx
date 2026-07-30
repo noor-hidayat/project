@@ -3,16 +3,23 @@ import { parseBarcode } from "../lib/barcodeParser";
 import {
   parseBarcodeDateToDateValue,
   dateValueToDDMMMYYYY,
+  ddmmyyToDateValue,
   getTodayDateValue,
 } from "../lib/dateUtils";
 
 export default function ScanForm({ onGenerate, saving }) {
   const [barcode, setBarcode] = useState("");
   const [dateValue, setDateValue] = useState(getTodayDateValue());
+  const [dateText, setDateText] = useState("");
   const [qty, setQty] = useState("");
   const [operator, setOperator] = useState("");
   const [error, setError] = useState("");
   const barcodeRef = useRef(null);
+  const dateInputRef = useRef(null);
+
+  useEffect(() => {
+    setDateText(dateValueToDDMMMYYYY(dateValue));
+  }, [dateValue]);
 
   useEffect(() => {
     barcodeRef.current?.focus();
@@ -26,6 +33,33 @@ export default function ScanForm({ onGenerate, saving }) {
       if (dv) setDateValue(dv);
     }
   }, []);
+
+  function handleDateTextChange(e) {
+    const raw = e.target.value.toUpperCase();
+    const digitsOnly = raw.replace(/[^0-9]/g, "");
+
+    if (digitsOnly.length === 6) {
+      const dv = ddmmyyToDateValue(digitsOnly);
+      if (dv) {
+        setDateValue(dv);
+        return;
+      }
+    }
+
+    if (raw.length <= 11) {
+      setDateText(raw);
+    }
+  }
+
+  function handleCalendarClick() {
+    dateInputRef.current?.showPicker?.();
+  }
+
+  function handleDatePickerChange(e) {
+    if (e.target.value) {
+      setDateValue(e.target.value);
+    }
+  }
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -79,15 +113,34 @@ export default function ScanForm({ onGenerate, saving }) {
 
         <div className="form-group">
           <label className="form-label" htmlFor="prodDate">Tanggal Produksi</label>
-          <input
-            id="prodDate"
-            className="form-input"
-            type="date"
-            value={dateValue}
-            onChange={(e) => setDateValue(e.target.value)}
-          />
+          <div className="date-input-wrap">
+            <input
+              id="prodDate"
+              className="form-input"
+              type="text"
+              value={dateText}
+              onChange={handleDateTextChange}
+              placeholder="DDMMMYYYY"
+              autoComplete="off"
+            />
+            <button
+              type="button"
+              className="btn-calendar"
+              onClick={handleCalendarClick}
+              title="Pilih tanggal dari kalender"
+            >
+              &#128197;
+            </button>
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={dateValue}
+              onChange={handleDatePickerChange}
+              className="date-picker-hidden"
+            />
+          </div>
           <div className="form-hint">
-            {dateValue ? dateValueToDDMMMYYYY(dateValue) : ""}
+            Ketik DDMMYY (contoh: 290726) atau klik icon kalender
           </div>
         </div>
 
