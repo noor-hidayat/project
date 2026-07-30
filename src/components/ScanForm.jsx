@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { parseBarcode } from "../lib/barcodeParser";
 
 export default function ScanForm({ onGenerate, saving }) {
   const [barcode, setBarcode] = useState("");
+  const [productionDate, setProductionDate] = useState("");
   const [qty, setQty] = useState("");
   const [operator, setOperator] = useState("");
   const [error, setError] = useState("");
@@ -9,6 +11,14 @@ export default function ScanForm({ onGenerate, saving }) {
 
   useEffect(() => {
     barcodeRef.current?.focus();
+  }, []);
+
+  const handleBarcodeChange = useCallback((value) => {
+    setBarcode(value);
+    const parsed = parseBarcode(value);
+    if (parsed) {
+      setProductionDate(parsed.productionDate);
+    }
   }, []);
 
   function handleSubmit(e) {
@@ -21,13 +31,23 @@ export default function ScanForm({ onGenerate, saving }) {
       return;
     }
 
+    if (!productionDate.trim()) {
+      setError("Tanggal produksi harus diisi");
+      return;
+    }
+
     const qtyNum = parseInt(qty, 10);
     if (!qty || isNaN(qtyNum) || qtyNum < 1 || qtyNum > 500) {
       setError("Qty harus diisi dengan angka 1–500");
       return;
     }
 
-    onGenerate({ barcode: barcode.trim(), qty: qtyNum, operator: operator.trim() });
+    onGenerate({
+      barcode: barcode.trim(),
+      productionDate: productionDate.trim(),
+      qty: qtyNum,
+      operator: operator.trim(),
+    });
   }
 
   return (
@@ -44,11 +64,25 @@ export default function ScanForm({ onGenerate, saving }) {
             className="form-input"
             type="text"
             value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
+            onChange={(e) => handleBarcodeChange(e.target.value)}
             placeholder="Scan atau ketik barcode..."
             autoComplete="off"
           />
           <div className="form-hint">Scan barcode pertama dari roll</div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="prodDate">Tanggal Produksi</label>
+          <input
+            id="prodDate"
+            className="form-input"
+            type="text"
+            value={productionDate}
+            onChange={(e) => setProductionDate(e.target.value)}
+            placeholder="DDMMYY"
+            maxLength={6}
+          />
+          <div className="form-hint">Tanggal valid pemakaian. Otomatis terisi dari barcode, bisa diedit</div>
         </div>
 
         <div className="form-group">
