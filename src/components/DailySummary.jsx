@@ -132,8 +132,8 @@ export default function DailySummary() {
             ) : (
               <>
                 <div className="table-wrap">
-                  <table className="table table-bordered mb-1">
-                    <thead className="table-light">
+                  <table className="summary-table">
+                    <thead>
                       <tr>
                         <th>Produk</th>
                         <th className="text-center">Shift 1</th>
@@ -146,23 +146,23 @@ export default function DailySummary() {
                       {summary.items.map((item) => (
                         <tr key={item.productCode}>
                           <td>
-                            <div className="fw-semibold">{item.productName}</div>
-                            <div className="text-muted mono" style={{ fontSize: "0.8rem" }}>{item.productCode}</div>
+                            <div className="summary-prod-name">{item.productName}</div>
+                            <div className="summary-prod-code">{item.productCode}</div>
                           </td>
                           <td className="text-center">{item.shifts["01"] || "-"}</td>
                           <td className="text-center">{item.shifts["02"] || "-"}</td>
                           <td className="text-center">{item.shifts["03"] || "-"}</td>
-                          <td className="text-center fw-bold text-primary">{item.total}</td>
+                          <td className="text-center summary-cell-total">{item.total}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr className="fw-bold">
+                      <tr className="summary-grand">
                         <td>Grand Total</td>
                         <td className="text-center">{summary.grandTotal["01"] || "-"}</td>
                         <td className="text-center">{summary.grandTotal["02"] || "-"}</td>
                         <td className="text-center">{summary.grandTotal["03"] || "-"}</td>
-                        <td className="text-center fw-bold text-primary">{summary.grandTotal.total}</td>
+                        <td className="text-center summary-cell-total">{summary.grandTotal.total}</td>
                       </tr>
                     </tfoot>
                   </table>
