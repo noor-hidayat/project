@@ -13,6 +13,7 @@ const STORAGE_KEY = "barcode_app_user";
 function App() {
   const [user, setUser] = useState(() => sessionStorage.getItem(STORAGE_KEY));
   const [view, setView] = useState("scan");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const [productCode, setProductCode] = useState("");
   const [result, setResult] = useState(null);
@@ -206,15 +207,33 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Scan Barcode</h1>
+        <h1>Trace Barcode</h1>
         <nav className="app-nav">
           <button className={"nav-btn" + (view === "scan" ? " active" : "")} onClick={() => setView("scan")}>Scan</button>
           <button className={"nav-btn" + (view === "history" ? " active" : "")} onClick={handleViewHistory}>Riwayat</button>
           <button className={"nav-btn" + (view === "summary" ? " active" : "")} onClick={handleViewSummary}>Ringkasan</button>
         </nav>
-        <div className="user-badge">
-          <span>{user}</span>
-          <button className="btn-logout" onClick={handleLogout}>Logout</button>
+        <div className="user-dropdown" onMouseEnter={() => setDropdownOpen(true)} onMouseLeave={() => setDropdownOpen(false)}>
+          <div className="user-trigger">
+            <div className="user-avatar">{user[0].toUpperCase()}</div>
+            <span className="user-name">{user}</span>
+            <i className="bi bi-chevron-down user-chevron"/>
+          </div>
+          {dropdownOpen && (
+            <div className="dropdown-menu">
+              <div className="dropdown-header">
+                <div className="user-avatar large">{user[0].toUpperCase()}</div>
+                <div className="dropdown-user-info">
+                  <div className="dropdown-username">{user}</div>
+                  <div className="dropdown-role">User</div>
+                </div>
+              </div>
+              <div className="dropdown-divider"/>
+              <button className="dropdown-item text-danger" onClick={handleLogout}>
+                <i className="bi bi-box-arrow-right me-2"/>Logout
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
