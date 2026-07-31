@@ -241,7 +241,7 @@ function App() {
                 </div>
               </div>
               <div className="dropdown-divider"/>
-              <button className="dropdown-item text-danger" onClick={handleLogout}>
+              <button className="dropdown-logout" onClick={handleLogout}>
                 <i className="bi bi-box-arrow-right me-2"/>Logout
               </button>
             </div>

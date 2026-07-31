@@ -155,7 +155,7 @@
   margin: 0;
 }
 
-.dropdown-item {
+.dropdown-logout {
   display: flex;
   align-items: center;
   width: 100%;
@@ -166,12 +166,13 @@
   font-weight: 500;
   cursor: pointer;
   font-family: inherit;
-  color: var(--text);
+  color: var(--error);
   transition: background 0.15s;
 }
 
-.dropdown-item:hover {
+.dropdown-logout:hover {
   background: #fef2f2;
+  color: #b91c1c;
 }
 
 .card {
