@@ -98,7 +98,7 @@ export default function DailySummary() {
         <div className="mb-3">
           <label className="form-label">Tanggal Produksi</label>
           <div className="d-flex gap-2 align-items-center">
-            <div className="input-group" style={{ maxWidth: 280 }}>
+            <div className="input-group input-group-sm" style={{ maxWidth: 300 }}>
               <button className="btn btn-outline-secondary" onClick={() => datePickerRef.current?.showPicker()}>
                 <i className="bi bi-calendar3"/>
               </button>
