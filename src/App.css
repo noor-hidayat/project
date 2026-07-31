@@ -109,6 +109,10 @@
   transition: transform 0.2s;
 }
 
+.user-chevron.open {
+  transform: rotate(180deg);
+}
+
 .dropdown-menu {
   position: absolute;
   top: calc(100% + 6px);

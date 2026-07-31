@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { parseBarcode, generateBarcodeRange, validateQty } from "./lib/barcodeParser";
 import { getTodayDDMMYY } from "./lib/dateUtils";
 import { supabase } from "./lib/supabaseClient";
@@ -14,6 +14,7 @@ function App() {
   const [user, setUser] = useState(() => sessionStorage.getItem(STORAGE_KEY));
   const [view, setView] = useState("scan");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropRef = useRef(null);
   const [formKey, setFormKey] = useState(0);
   const [productCode, setProductCode] = useState("");
   const [result, setResult] = useState(null);
@@ -31,6 +32,17 @@ function App() {
       sessionStorage.removeItem(STORAGE_KEY);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handler = (e) => {
+      if (dropRef.current && !dropRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [dropdownOpen]);
 
   const handleLogin = useCallback((username) => {
     setUser(username);
@@ -213,11 +225,11 @@ function App() {
           <button className={"nav-btn" + (view === "history" ? " active" : "")} onClick={handleViewHistory}>Riwayat</button>
           <button className={"nav-btn" + (view === "summary" ? " active" : "")} onClick={handleViewSummary}>Ringkasan</button>
         </nav>
-        <div className="user-dropdown" onMouseEnter={() => setDropdownOpen(true)} onMouseLeave={() => setDropdownOpen(false)}>
-          <div className="user-trigger">
+        <div className="user-dropdown" ref={dropRef}>
+          <div className="user-trigger" onClick={() => setDropdownOpen((v) => !v)}>
             <div className="user-avatar">{user[0].toUpperCase()}</div>
             <span className="user-name">{user}</span>
-            <i className="bi bi-chevron-down user-chevron"/>
+            <i className={"bi bi-chevron-down user-chevron" + (dropdownOpen ? " open" : "")}/>
           </div>
           {dropdownOpen && (
             <div className="dropdown-menu">
