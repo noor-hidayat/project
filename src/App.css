@@ -629,18 +629,116 @@
   font-weight: 500;
 }
 
-.history-filters {
+.filter-panel {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.filter-panel-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  margin-bottom: 14px;
   flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.filter-panel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.filter-panel-title .bi {
+  color: var(--primary);
+}
+
+.filter-panel-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-light);
+  border: 1px solid rgba(35, 41, 91, 0.15);
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+
+.filter-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-panel-actions .form-select {
+  width: auto;
+  min-width: 150px;
+}
+
+.filter-reset {
+  background: none;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.filter-reset:hover {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.filter-panel-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.history-filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-filter-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.filter-remove {
+  background: none;
+  border: none;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 2px;
+  font-family: inherit;
+}
+
+.filter-remove:hover {
+  color: var(--error);
 }
 
 .history-filter-search {
   position: relative;
-  flex: 1 1 220px;
-  min-width: 220px;
+  width: 100%;
 }
 
 .history-filter-search .bi {
@@ -655,11 +753,6 @@
 
 .history-filter-search .form-control {
   padding-left: 30px;
-}
-
-.history-filters .form-select {
-  width: auto;
-  min-width: 130px;
 }
 
 .history-no-result {
@@ -989,8 +1082,75 @@
 
 .summary-toolbar {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.summary-toolbar .export-btn {
+  margin-left: auto;
+}
+
+.export-btn {
+  font-size: 0.68rem;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.export-btn .bi {
+  font-size: 0.72rem;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+
+.summary-card-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.summary-card-label .bi {
+  color: var(--text-muted);
+}
+
+.summary-card-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.summary-card-total {
+  background: var(--primary-light);
+  border-color: rgba(35, 41, 91, 0.18);
+}
+
+.summary-card-total .summary-card-value {
+  color: var(--primary);
+}
+
+.summary-foot {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 10px 0 0;
 }
 
 .sisa-check {
@@ -1029,9 +1189,13 @@
 }
 
 .summary-grand td {
-  border-top: 2px solid var(--text);
+  border-top: 2px solid var(--primary);
   font-weight: 700;
-  background: #fafafa;
+  background: var(--primary-light);
+}
+
+.summary-grand .summary-cell-total {
+  color: var(--primary);
 }
 
 /* ============= RESPONSIVE ============= */

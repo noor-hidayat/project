@@ -12,36 +12,42 @@ export default function TransactionHistory({ transactions, loading, error, onBac
   const [barcodes, setBarcodes] = useState([]);
   const [loadingBarcodes, setLoadingBarcodes] = useState(false);
   const [search, setSearch] = useState("");
+  const [filterDate, setFilterDate] = useState("");
   const [filterShift, setFilterShift] = useState("");
-  const [filterProduct, setFilterProduct] = useState("");
 
   const shifts = useMemo(() => {
-    const s = new Set();
-    transactions.forEach((t) => t.shift && s.add(t.shift));
-    return [...s].sort();
-  }, [transactions]);
-
-  const products = useMemo(() => {
-    const p = new Set();
-    transactions.forEach((t) => p.add(t.product_name || t.product_code));
-    return [...p].sort();
+    return [...new Set(transactions.map((t) => t.shift))].filter(Boolean).sort();
   }, [transactions]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return transactions.filter((t) => {
+      if (q) {
+        const haystack = [
+          t.product_name,
+          t.product_code,
+          t.trx_code,
+          t.operator,
+          t.admin_user,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      if (filterDate && t.production_date !== filterDate) return false;
       if (filterShift && t.shift !== filterShift) return false;
-      if (filterProduct && (t.product_name || t.product_code) !== filterProduct) return false;
-      if (!q) return true;
-      return [
-        t.trx_code,
-        t.product_name,
-        t.product_code,
-        t.operator,
-        t.admin_user,
-      ].some((v) => v && v.toLowerCase().includes(q));
+      return true;
     });
-  }, [transactions, search, filterShift, filterProduct]);
+  }, [transactions, search, filterDate, filterShift]);
+
+  const hasActiveFilter = search.trim() !== "" || filterDate !== "" || filterShift !== "";
+
+  function resetFilters() {
+    setSearch("");
+    setFilterDate("");
+    setFilterShift("");
+  }
 
   const visible = filtered.slice(0, 20);
 
@@ -94,37 +100,66 @@ export default function TransactionHistory({ transactions, loading, error, onBac
         <span className="history-count">Menampilkan {visible.length} dari {filtered.length} transaksi</span>
       </div>
 
-      <div className="history-filters">
-        <div className="history-filter-search">
-          <i className="bi bi-search" />
-          <input
-            type="text"
-            className="form-control form-control-sm"
-            placeholder="Cari kode, produk, operator..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="filter-panel">
+        <div className="filter-panel-header">
+          <div className="filter-panel-title">
+            <i className="bi bi-funnel"/>
+            <span>Filter</span>
+            {hasActiveFilter && (
+              <span className="filter-panel-badge">aktif</span>
+            )}
+          </div>
+          <div className="filter-panel-actions">
+            {hasActiveFilter && (
+              <button className="filter-reset" onClick={resetFilters}>
+                <i className="bi bi-arrow-counterclockwise me-1"/>Reset
+              </button>
+            )}
+          </div>
         </div>
-        <select
-          className="form-select form-select-sm"
-          value={filterShift}
-          onChange={(e) => setFilterShift(e.target.value)}
-        >
-          <option value="">Semua Shift</option>
-          {shifts.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-        <select
-          className="form-select form-select-sm"
-          value={filterProduct}
-          onChange={(e) => setFilterProduct(e.target.value)}
-        >
-          <option value="">Semua Produk</option>
-          {products.map((p) => (
-            <option key={p} value={p}>{p}</option>
-          ))}
-        </select>
+        <div className="filter-panel-body">
+          <div className="history-filter-item">
+            <div className="history-filter-label">
+              <span>Cari</span>
+            </div>
+            <div className="history-filter-search">
+              <i className="bi bi-search" />
+              <input
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="Produk, kode, operator..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="history-filter-item">
+            <div className="history-filter-label">
+              <span>Tanggal Produksi</span>
+            </div>
+            <input
+              type="date"
+              className="form-control form-control-sm"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+            />
+          </div>
+          <div className="history-filter-item">
+            <div className="history-filter-label">
+              <span>Shift</span>
+            </div>
+            <select
+              className="form-select form-select-sm"
+              value={filterShift}
+              onChange={(e) => setFilterShift(e.target.value)}
+            >
+              <option value="">Semua</option>
+              {shifts.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="table-wrap">

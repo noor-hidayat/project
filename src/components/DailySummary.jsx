@@ -147,30 +147,35 @@ export default function DailySummary() {
         <h5 className="mb-0">Ringkasan Harian</h5>
       </div>
       <div className="card-body">
-        <div className="mb-3">
-          <label className="form-label">Tanggal Produksi</label>
-          <div className="d-flex align-items-center">
-            <div className="input-group input-group-sm" style={{ width: 210 }}>
-              <span className="input-group-text"><i className="bi bi-calendar3"/></span>
-              <input
-                className="form-control mono"
-                type="text"
-                value={dateLabel}
-                placeholder="DD-MM-YYYY"
-                readOnly
-                onPointerDown={() => datePickerRef.current?.showPicker()}
-              />
-              <input
-                ref={datePickerRef}
-                type="date"
-                onChange={handleDatePick}
-                style={{ position: "absolute", top: "100%", left: 0, opacity: 0, height: 0, pointerEvents: "none" }}
-              />
-            </div>
-            <button className="btn btn-sm btn-outline-primary ms-2" onClick={goToday}>
-              Hari Ini
-            </button>
+        <div className="summary-toolbar">
+          <div className="input-group input-group-sm" style={{ width: 210 }}>
+            <span className="input-group-text"><i className="bi bi-calendar3"/></span>
+            <input
+              className="form-control mono"
+              type="text"
+              value={dateLabel}
+              placeholder="DD-MM-YYYY"
+              readOnly
+              onPointerDown={() => datePickerRef.current?.showPicker()}
+            />
+            <input
+              ref={datePickerRef}
+              type="date"
+              onChange={handleDatePick}
+              style={{ position: "absolute", top: "100%", left: 0, opacity: 0, height: 0, pointerEvents: "none" }}
+            />
           </div>
+          <button className="btn btn-sm btn-outline-primary" onClick={goToday}>
+            Hari Ini
+          </button>
+          <button
+            className="btn btn-sm btn-success export-btn"
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            <i className={"bi " + (exporting ? "bi-hourglass-split" : "bi-download") + " me-1"}/>
+            {exporting ? "Exporting..." : "Export"}
+          </button>
         </div>
 
         {loading && <div className="alert alert-info py-2">Memuat data...</div>}
@@ -182,15 +187,19 @@ export default function DailySummary() {
               <p className="text-center text-muted py-4 mb-0">Tidak ada data produksi untuk tanggal ini.</p>
             ) : (
               <>
-                <div className="summary-toolbar">
-                  <button
-                    className="btn btn-sm btn-success"
-                    onClick={handleExport}
-                    disabled={exporting}
-                  >
-                    <i className={"bi " + (exporting ? "bi-hourglass-split" : "bi-download") + " me-1"}/>
-                    {exporting ? "Exporting..." : "Export"}
-                  </button>
+                <div className="summary-cards">
+                  <div className="summary-card">
+                    <div className="summary-card-label"><i className="bi bi-sun-fill me-1"/>Shift 1</div>
+                    <div className="summary-card-value">{summary.grandTotal["01"] || 0}</div>
+                  </div>
+                  <div className="summary-card">
+                    <div className="summary-card-label"><i className="bi bi-moon-stars-fill me-1"/>Shift 2</div>
+                    <div className="summary-card-value">{summary.grandTotal["02"] || 0}</div>
+                  </div>
+                  <div className="summary-card summary-card-total">
+                    <div className="summary-card-label"><i className="bi bi-box-seam-fill me-1"/>Grand Total</div>
+                    <div className="summary-card-value">{summary.grandTotal.total} <span className="summary-unit">Box</span></div>
+                  </div>
                 </div>
                 <div className="table-wrap">
                   <table className="summary-table">
@@ -225,7 +234,7 @@ export default function DailySummary() {
                     </tfoot>
                   </table>
                 </div>
-                <p className="text-center text-muted small mb-0">{dataCount} barcode tercatat</p>
+                <p className="summary-foot">Total {dataCount} barcode tercatat</p>
               </>
             )}
           </>

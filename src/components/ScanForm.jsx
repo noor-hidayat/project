@@ -51,7 +51,7 @@ export default function ScanForm({
       if (!bahanSisa) {
         setDateRaw(parsed.productionDate);
         setDateText(ddmmyyToDDMMYYYY(parsed.productionDate));
-        setShift(parsed.shift === "02" ? "02" : "01");
+        setShift(parsed.shift === "01" ? "01" : "02");
       }
     } else {
       setBarcodeDateInfo(null);
@@ -70,7 +70,7 @@ export default function ScanForm({
       if (parsed) {
         setDateRaw(parsed.productionDate);
         setDateText(ddmmyyToDDMMYYYY(parsed.productionDate));
-        setShift(parsed.shift === "02" ? "02" : "01");
+        setShift(parsed.shift === "01" ? "01" : "02");
       }
     }
   }
@@ -88,7 +88,7 @@ export default function ScanForm({
       const datePart = raw.slice(0, 6);
       const shiftPart = raw.slice(6, 8);
       setDateRaw(datePart);
-      setShift(shiftPart === "02" ? "02" : "01");
+      setShift(shiftPart === "01" ? "01" : "02");
     } else if (raw.length === 6) {
       setDateRaw(raw);
     } else if (raw.length === 0) {
@@ -224,7 +224,7 @@ export default function ScanForm({
                   }}
                 />
               </div>
-              <div className="form-text">Ketik 6 digit (DDMMYY) atau 8 digit (DDMMYY+shift)</div>
+              <div className="form-text">Ketik 6 digit (DDMMYY)</div>
             </div>
             <div className="col-md-4 mb-3">
               <label className="sisa-check invisible">

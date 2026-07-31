@@ -136,6 +136,10 @@ function App() {
       .single();
     if (product) productName = product.name;
 
+    const shiftMapped = bahanSisa
+      ? formShift
+      : (barcodeShift === "01" ? "01" : "02");
+
     const { data: existing } = await supabase
       .from("scan_logs")
       .select("barcode")
@@ -155,7 +159,7 @@ function App() {
       barcodeDate,
       barcodeShift,
       productionDate,
-      shift: formShift,
+      shift: shiftMapped,
       qty,
       operator,
       productCode: parsed.productCode,
