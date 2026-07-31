@@ -98,16 +98,15 @@ export default function DailySummary() {
         <div className="mb-3">
           <label className="form-label">Tanggal Produksi</label>
           <div className="d-flex align-items-center">
-            <div className="input-group input-group-sm" style={{ width: 230 }}>
-              <button className="btn btn-outline-secondary" onClick={() => datePickerRef.current?.showPicker()}>
-                <i className="bi bi-calendar3"/>
-              </button>
+            <div className="input-group input-group-sm" style={{ width: 210 }}>
+              <span className="input-group-text"><i className="bi bi-calendar3"/></span>
               <input
                 className="form-control mono"
                 type="text"
                 value={dateLabel}
                 placeholder="DD-MM-YYYY"
                 readOnly
+                onPointerDown={() => datePickerRef.current?.showPicker()}
               />
               <input
                 ref={datePickerRef}
