@@ -11,55 +11,18 @@
   margin: 0 -16px 20px;
   padding: 10px 16px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
 }
 
 .app-header h1 {
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--text);
   margin: 0;
   letter-spacing: -0.02em;
   white-space: nowrap;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-/* ============= NAV TABS ============= */
-.nav-tabs {
-  display: flex;
-  gap: 2px;
-  background: var(--bg);
-  border-radius: var(--radius-sm);
-  padding: 3px;
-}
-
-.nav-tab {
-  background: none;
-  border: none;
-  padding: 6px 14px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.15s;
-  font-family: inherit;
-}
-
-.nav-tab:hover {
-  color: var(--text);
-}
-
-.nav-tab.active {
-  background: var(--card);
-  color: var(--primary);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .user-badge {
@@ -890,65 +853,25 @@
 }
 
 /* ============= RESPONSIVE ============= */
-@media (max-width: 480px) {
-  .app-header {
-    padding: 10px 12px;
-  }
-
-  .header-right {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-
-  .nav-tabs {
-    justify-content: center;
-  }
-
-  .user-badge {
-    justify-content: flex-end;
-  }
-}
-
-@media (max-width: 400px) {
-  .app {
-    padding: 0 32px 40px;
-  }
-
-  .app-header {
-    margin: 0 -12px 16px;
-    padding: 10px 12px;
-  }
-
-  .app-header h1 {
-    font-size: 1.1rem;
-  }
-
-  .card-body {
-    padding: 28px 32px 32px;
-  }
-
-  .card-header {
-    padding: 28px 32px 0;
-  }
-}
-
 @media (max-width: 600px) {
   .app {
     padding: 0 16px 24px;
   }
 
   .app-header {
-    padding: 12px 16px;
-    margin: 0 -16px 20px;
-    gap: 10px;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 12px;
+    margin: 0 -12px 16px;
   }
 
   .app-header h1 {
-    font-size: 0.88rem;
+    width: 100%;
+    font-size: 0.82rem;
   }
 
   .app-nav {
+    flex: 1;
     gap: 1px;
     padding: 2px;
   }

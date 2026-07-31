@@ -206,26 +206,11 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Scan Barcode Produksi</h1>
+        <h1>Scan Barcode</h1>
         <nav className="app-nav">
-          <button
-            className={"nav-btn" + (view === "scan" ? " active" : "")}
-            onClick={() => setView("scan")}
-          >
-            Scan
-          </button>
-          <button
-            className={"nav-btn" + (view === "history" ? " active" : "")}
-            onClick={handleViewHistory}
-          >
-            Riwayat
-          </button>
-          <button
-            className={"nav-btn" + (view === "summary" ? " active" : "")}
-            onClick={handleViewSummary}
-          >
-            Ringkasan
-          </button>
+          <button className={"nav-btn" + (view === "scan" ? " active" : "")} onClick={() => setView("scan")}>Scan</button>
+          <button className={"nav-btn" + (view === "history" ? " active" : "")} onClick={handleViewHistory}>Riwayat</button>
+          <button className={"nav-btn" + (view === "summary" ? " active" : "")} onClick={handleViewSummary}>Ringkasan</button>
         </nav>
         <div className="user-badge">
           <span>{user}</span>
