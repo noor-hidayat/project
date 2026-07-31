@@ -29,6 +29,7 @@ export default function ScanForm({
   const [shift, setShift] = useState("");
   const [qty, setQty] = useState("");
   const [operator, setOperator] = useState("");
+  const [bahanSisa, setBahanSisa] = useState(false);
   const [error, setError] = useState("");
   const barcodeRef = useRef(null);
   const datePickerRef = useRef(null);
@@ -47,14 +48,32 @@ export default function ScanForm({
     if (parsed) {
       setBarcodeDateInfo(parsed.productionDate);
       setBarcodeShiftInfo(parsed.shift);
-      setDateRaw(parsed.productionDate);
-      setDateText(ddmmyyToDDMMYYYY(parsed.productionDate));
-      setShift(parsed.shift);
+      if (!bahanSisa) {
+        setDateRaw(parsed.productionDate);
+        setDateText(ddmmyyToDDMMYYYY(parsed.productionDate));
+        setShift(parsed.shift === "02" ? "02" : "01");
+      }
     } else {
       setBarcodeDateInfo(null);
       setBarcodeShiftInfo(null);
     }
-  }, []);
+  }, [bahanSisa]);
+
+  function toggleBahanSisa(checked) {
+    setBahanSisa(checked);
+    if (checked) {
+      setDateRaw("");
+      setDateText("");
+      setShift("");
+    } else {
+      const parsed = parseBarcode(barcode);
+      if (parsed) {
+        setDateRaw(parsed.productionDate);
+        setDateText(ddmmyyToDDMMYYYY(parsed.productionDate));
+        setShift(parsed.shift === "02" ? "02" : "01");
+      }
+    }
+  }
 
   function handleDateFocus() {
     if (dateRaw) setDateText(dateRaw);
@@ -69,7 +88,7 @@ export default function ScanForm({
       const datePart = raw.slice(0, 6);
       const shiftPart = raw.slice(6, 8);
       setDateRaw(datePart);
-      setShift(shiftPart);
+      setShift(shiftPart === "02" ? "02" : "01");
     } else if (raw.length === 6) {
       setDateRaw(raw);
     } else if (raw.length === 0) {
@@ -99,13 +118,18 @@ export default function ScanForm({
       return;
     }
 
+    if (bahanSisa && (dateRaw.length !== 6 || !shift)) {
+      setError("Bahan sisa dicentang — tanggal produksi dan shift wajib diisi manual sesuai laporan operator");
+      return;
+    }
+
     if (dateRaw.length !== 6) {
       setError("Tanggal produksi harus 6 digit (DDMMYY)");
       return;
     }
 
-    if (!shift.trim() || shift.length !== 2) {
-      setError("Shift harus 2 digit (01/02/03)");
+    if (!shift) {
+      setError("Pilih shift terlebih dahulu");
       return;
     }
 
@@ -123,6 +147,7 @@ export default function ScanForm({
       shift: shift.trim(),
       qty: qtyNum,
       operator: operator.trim(),
+      bahanSisa,
     });
   }
 
@@ -159,8 +184,19 @@ export default function ScanForm({
 
           <div className="row">
             <div className="col-md-8 mb-3">
+              <label className="sisa-check">
+                <input
+                  type="checkbox"
+                  checked={bahanSisa}
+                  onChange={(e) => toggleBahanSisa(e.target.checked)}
+                />
+                <span>Bahan Sisa</span>
+              </label>
+              {bahanSisa && (
+                <p className="sisa-note">*Sesuaikan tanggal dan shift produksi dengan laporan operator.</p>
+              )}
               <label className="form-label" htmlFor="prodDate">Tanggal Produksi</label>
-              <div className="input-group" style={{ position: "relative" }}>
+              <div className={"input-group" + (bahanSisa ? " sisa-warn" : "")} style={{ position: "relative" }}>
                 <input
                   id="prodDate"
                   className="form-control mono"
@@ -191,17 +227,22 @@ export default function ScanForm({
               <div className="form-text">Ketik 6 digit (DDMMYY) atau 8 digit (DDMMYY+shift)</div>
             </div>
             <div className="col-md-4 mb-3">
+              <label className="sisa-check invisible">
+                <input type="checkbox" tabIndex={-1} aria-hidden="true" />
+                <span>Bahan Sisa</span>
+              </label>
+              {bahanSisa && <p className="sisa-note invisible">&nbsp;</p>}
               <label className="form-label" htmlFor="shift">Shift</label>
-              <input
+              <select
                 id="shift"
-                className="form-control mono"
-                type="text"
+                className={"form-select" + (bahanSisa ? " sisa-warn" : "")}
                 value={shift}
-                onChange={(e) => setShift(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
-                placeholder="01"
-                maxLength={2}
-                spellCheck={false}
-              />
+                onChange={(e) => setShift(e.target.value)}
+              >
+                <option value="">Pilih Shift</option>
+                <option value="01">Shift 1</option>
+                <option value="02">Shift 2</option>
+              </select>
             </div>
           </div>
 

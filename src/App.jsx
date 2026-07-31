@@ -90,7 +90,7 @@ function App() {
       new Date(b.created_at) - new Date(a.created_at)
     );
 
-    setTransactions(items.slice(0, 20));
+    setTransactions(items);
     setLoadingHistory(false);
   }, []);
 
@@ -98,7 +98,7 @@ function App() {
     setView("summary");
   }, []);
 
-  const handleGenerate = useCallback(async ({ barcode, barcodeDate, barcodeShift, productionDate, shift: formShift, qty, operator }) => {
+  const handleGenerate = useCallback(async ({ barcode, barcodeDate, barcodeShift, productionDate, shift: formShift, qty, operator, bahanSisa }) => {
     setResult(null);
     setSaveError("");
     setGenerated(null);
@@ -162,6 +162,7 @@ function App() {
       productName,
       range,
       trxCode,
+      bahanSisa,
     });
   }, []);
 
@@ -173,7 +174,7 @@ function App() {
 
     const {
       barcodeDate, barcodeShift, productionDate,
-      shift: formShift, operator, productCode, productName, range, trxCode,
+      shift: formShift, operator, productCode, productName, range, trxCode, bahanSisa,
     } = generated;
 
     const rows = range.map((bc) => ({
@@ -188,6 +189,7 @@ function App() {
       operator: operator || null,
       admin_user: user,
       trx_code: trxCode,
+      bahan_sisa: bahanSisa || false,
     }));
 
     const { error: scanError } = await supabase.from("scan_logs").insert(rows);

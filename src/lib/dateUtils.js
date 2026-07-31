@@ -29,6 +29,5 @@ export function getTodayDDMMYY() {
 export function getTodayShift() {
   const h = new Date().getHours();
   if (h >= 6 && h < 14) return "01";
-  if (h >= 14 && h < 22) return "02";
-  return "03";
+  return "02";
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import * as XLSX from "xlsx";
 import { supabase } from "../lib/supabaseClient";
 import { getTodayDDMMYY, ddmmyyToDDMMYYYY, ddmmyyToDateValue } from "../lib/dateUtils";
 
@@ -14,6 +15,7 @@ export default function DailySummary() {
   const [error, setError] = useState("");
   const [dataCount, setDataCount] = useState(0);
   const [summary, setSummary] = useState(null);
+  const [exporting, setExporting] = useState(false);
   const datePickerRef = useRef(null);
 
   useEffect(() => {
@@ -51,7 +53,7 @@ export default function DailySummary() {
             prodMap[key] = {
               productCode: row.product_code,
               productName: row.product_name || "(tanpa nama)",
-              shifts: { "01": 0, "02": 0, "03": 0 },
+              shifts: { "01": 0, "02": 0 },
             };
           }
           const s = row.shift;
@@ -60,13 +62,12 @@ export default function DailySummary() {
           }
         }
 
-        const grandTotal = { "01": 0, "02": 0, "03": 0, total: 0 };
+        const grandTotal = { "01": 0, "02": 0, total: 0 };
         const items = Object.values(prodMap);
         for (const item of items) {
-          item.total = item.shifts["01"] + item.shifts["02"] + item.shifts["03"];
+          item.total = item.shifts["01"] + item.shifts["02"];
           grandTotal["01"] += item.shifts["01"];
           grandTotal["02"] += item.shifts["02"];
-          grandTotal["03"] += item.shifts["03"];
           grandTotal.total += item.total;
         }
 
@@ -87,6 +88,57 @@ export default function DailySummary() {
   }, []);
 
   const dateLabel = dateRaw ? ddmmyyToDDMMYYYY(dateRaw) : "";
+
+  const handleExport = useCallback(async () => {
+    if (!dateRaw || dateRaw.length !== 6) return;
+
+    setExporting(true);
+
+    const dateValue = ddmmyyToDateValue(dateRaw);
+
+    const { data: rows, error: err } = await supabase
+      .from("scan_logs")
+      .select("*")
+      .eq("production_date", dateValue)
+      .order("created_at", { ascending: true });
+
+    setExporting(false);
+
+    if (err) {
+      alert("Gagal export: " + err.message);
+      return;
+    }
+
+    if (!rows || rows.length === 0) {
+      alert("Tidak ada data untuk tanggal " + dateLabel);
+      return;
+    }
+
+    const columns = [
+      "barcode", "product_code", "product_name", "barcode_date",
+      "barcode_shift", "production_date", "shift", "serial_number",
+      "operator", "admin_user", "trx_code", "bahan_sisa", "created_at",
+    ];
+
+    const data = rows.map((r) => {
+      const obj = {};
+      columns.forEach((c) => { obj[c] = r[c] ?? ""; });
+      return obj;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(data, { header: columns });
+    ws["!cols"] = columns.map((c) => {
+      const maxLen = Math.max(
+        c.length,
+        ...data.map((d) => String(d[c]).length)
+      );
+      return { wch: Math.min(Math.max(maxLen + 2, 12), 60) };
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Scan Logs");
+    XLSX.writeFile(wb, "scan-logs-" + dateLabel + ".xlsx");
+  }, [dateRaw, dateLabel]);
 
   return (
     <div className="card">
@@ -130,6 +182,16 @@ export default function DailySummary() {
               <p className="text-center text-muted py-4 mb-0">Tidak ada data produksi untuk tanggal ini.</p>
             ) : (
               <>
+                <div className="summary-toolbar">
+                  <button
+                    className="btn btn-sm btn-success"
+                    onClick={handleExport}
+                    disabled={exporting}
+                  >
+                    <i className={"bi " + (exporting ? "bi-hourglass-split" : "bi-download") + " me-1"}/>
+                    {exporting ? "Exporting..." : "Export"}
+                  </button>
+                </div>
                 <div className="table-wrap">
                   <table className="summary-table">
                     <thead>
@@ -137,7 +199,6 @@ export default function DailySummary() {
                         <th>Produk</th>
                         <th className="text-center">Shift 1</th>
                         <th className="text-center">Shift 2</th>
-                        <th className="text-center">Shift 3</th>
                         <th className="text-center">Total</th>
                       </tr>
                     </thead>
@@ -150,8 +211,7 @@ export default function DailySummary() {
                           </td>
                           <td className="text-center">{item.shifts["01"] || "-"}</td>
                           <td className="text-center">{item.shifts["02"] || "-"}</td>
-                          <td className="text-center">{item.shifts["03"] || "-"}</td>
-                          <td className="text-center summary-cell-total">{item.total}</td>
+                          <td className="text-center summary-cell-total">{item.total} <span className="summary-unit">Box</span></td>
                         </tr>
                       ))}
                     </tbody>
@@ -160,8 +220,7 @@ export default function DailySummary() {
                         <td>Grand Total</td>
                         <td className="text-center">{summary.grandTotal["01"] || "-"}</td>
                         <td className="text-center">{summary.grandTotal["02"] || "-"}</td>
-                        <td className="text-center">{summary.grandTotal["03"] || "-"}</td>
-                        <td className="text-center summary-cell-total">{summary.grandTotal.total}</td>
+                        <td className="text-center summary-cell-total">{summary.grandTotal.total} <span className="summary-unit">Box</span></td>
                       </tr>
                     </tfoot>
                   </table>

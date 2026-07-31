@@ -629,6 +629,45 @@
   font-weight: 500;
 }
 
+.history-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.history-filter-search {
+  position: relative;
+  flex: 1 1 220px;
+  min-width: 220px;
+}
+
+.history-filter-search .bi {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.history-filter-search .form-control {
+  padding-left: 30px;
+}
+
+.history-filters .form-select {
+  width: auto;
+  min-width: 130px;
+}
+
+.history-no-result {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 24px !important;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -678,6 +717,13 @@
   font-family: ui-monospace, Consolas, monospace;
   font-size: 0.78rem;
   white-space: nowrap;
+}
+
+.cell-product {
+  max-width: 240px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cell-num {
@@ -739,6 +785,23 @@
   margin: 0;
 }
 
+.modal-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-count-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-light);
+  border: 1px solid rgba(35, 41, 91, 0.15);
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 .modal-close {
   background: none;
   border: none;
@@ -761,30 +824,103 @@
 }
 
 .modal-info {
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-  margin: 0 0 14px;
-}
-
-.modal-barcodes {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 4px;
-  max-height: 50vh;
-  overflow-x: auto;
-  overflow-y: auto;
-  white-space: nowrap;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
 }
 
-.modal-barcodes code {
-  font-family: ui-monospace, Consolas, monospace;
-  font-size: 0.75rem;
+.modal-info-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.modal-info-label {
+  flex-shrink: 0;
+  width: 110px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.modal-info-value {
+  font-size: 0.82rem;
   color: var(--text);
-  padding: 5px 10px;
-  background: #f1f5f9;
+  word-break: break-word;
+}
+
+.barcode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 8px;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.barcode-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.barcode-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.barcode-grid::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.barcode-grid::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.barcode-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
   border: 1px solid var(--card-border);
-  border-radius: 5px;
+  border-radius: 10px;
+  padding: 7px 12px;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+
+.barcode-chip:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  transform: translateY(-1px);
+}
+
+.barcode-chip-sn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 0.72rem;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.barcode-chip code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.72rem;
+  color: var(--text);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ============= SUMMARY TABLE ============= */
@@ -842,6 +978,54 @@
 .summary-cell-total {
   font-weight: 700;
   color: var(--primary);
+}
+
+.summary-unit {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-left: 2px;
+}
+
+.summary-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.sisa-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin: 0 0 6px;
+  user-select: none;
+}
+
+.sisa-check input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  margin: 0;
+}
+
+.sisa-note {
+  font-size: 0.68rem;
+  font-style: italic;
+  color: var(--text-muted);
+  margin: 0 0 6px;
+  line-height: 1.4;
+}
+
+.sisa-warn .form-control,
+.sisa-warn .input-group-text,
+.form-select.sisa-warn {
+  border-color: #f59e0b;
+  background-color: #fffbeb;
 }
 
 .summary-grand td {
