@@ -1,19 +1,23 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { getTodayDDMMYY, ddmmyyToDDMMYYYY, ddmmyyToDateValue } from "../lib/dateUtils";
 
+function ddmmyyFromDateValue(dateVal) {
+  if (!dateVal) return "";
+  const [y, m, d] = dateVal.split("-");
+  return d + m + y.slice(2);
+}
+
 export default function DailySummary() {
-  const [dateText, setDateText] = useState("");
   const [dateRaw, setDateRaw] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [data, setData] = useState([]);
+  const [dataCount, setDataCount] = useState(0);
   const [summary, setSummary] = useState(null);
+  const datePickerRef = useRef(null);
 
   useEffect(() => {
-    const today = getTodayDDMMYY();
-    setDateRaw(today);
-    setDateText(ddmmyyToDDMMYYYY(today));
+    setDateRaw(getTodayDDMMYY());
   }, []);
 
   useEffect(() => {
@@ -38,7 +42,7 @@ export default function DailySummary() {
           return;
         }
 
-        setData(rows || []);
+        setDataCount((rows || []).length);
 
         const prodMap = {};
         for (const row of rows || []) {
@@ -72,100 +76,101 @@ export default function DailySummary() {
     return () => { cancelled = true; };
   }, [dateRaw]);
 
-  const handleDateChange = useCallback((e) => {
-    const raw = e.target.value.replace(/[^0-9]/g, "");
-    if (raw.length > 8) return;
-    setDateText(raw);
+  const handleDatePick = useCallback((e) => {
+    const val = e.target.value;
+    if (!val) return;
+    setDateRaw(ddmmyyFromDateValue(val));
   }, []);
 
-  const handleDateBlur = useCallback(() => {
-    const digits = dateText.replace(/[^0-9]/g, "");
-    if (digits.length === 6) {
-      setDateRaw(digits);
-      setDateText(ddmmyyToDDMMYYYY(digits));
-    } else if (digits.length === 0) {
-      setDateRaw("");
-      setDateText("");
-    }
-  }, [dateText]);
+  const goToday = useCallback(() => {
+    setDateRaw(getTodayDDMMYY());
+  }, []);
+
+  const dateLabel = dateRaw ? ddmmyyToDDMMYYYY(dateRaw) : "";
 
   return (
     <div className="card">
-      <div className="card-header">
-        <h2>Ringkasan Harian</h2>
+      <div className="card-header d-flex align-items-center">
+        <i className="bi bi-bar-chart-line fs-4 me-2"/>
+        <h5 className="mb-0">Ringkasan Harian</h5>
       </div>
       <div className="card-body">
-        <div className="form-group">
-          <label className="form-label" htmlFor="summaryDate">Tanggal Produksi</label>
-          <div className="date-input-row">
-            <input
-              id="summaryDate"
-              className="form-input mono"
-              type="text"
-              value={dateText}
-              onChange={handleDateChange}
-              onBlur={handleDateBlur}
-              placeholder="DDMMYY"
-              autoComplete="off"
-            />
-            <button className="btn btn-secondary" onClick={() => {
-              const today = getTodayDDMMYY();
-              setDateRaw(today);
-              setDateText(ddmmyyToDDMMYYYY(today));
-            }}>
-              Hari Ini
-            </button>
+        <div className="mb-3">
+          <label className="form-label">Tanggal Produksi</label>
+          <div className="d-flex gap-2 align-items-center">
+            <div className="input-group" style={{ maxWidth: 280 }}>
+              <button className="btn btn-outline-secondary" onClick={() => datePickerRef.current?.showPicker()}>
+                <i className="bi bi-calendar3"/>
+              </button>
+              <input
+                className="form-control mono"
+                type="text"
+                value={dateLabel}
+                placeholder="DD-MM-YYYY"
+                readOnly
+              />
+              <input
+                ref={datePickerRef}
+                type="date"
+                onChange={handleDatePick}
+                style={{ position: "absolute", top: "100%", left: 0, opacity: 0, height: 0, pointerEvents: "none" }}
+              />
+              <button className="btn btn-outline-primary" onClick={goToday}>
+                <i className="bi bi-clock me-1"/>Hari Ini
+              </button>
+            </div>
           </div>
-          <div className="form-hint">Ketik 6 digit (DDMMYY)</div>
         </div>
 
-        {loading && <div className="status status-loading">Memuat data...</div>}
-        {error && <div className="status status-error">{error}</div>}
+        {loading && <div className="alert alert-info py-2">Memuat data...</div>}
+        {error && <div className="alert alert-danger py-2">{error}</div>}
 
         {summary && !loading && (
-          <div className="summary-wrap">
+          <>
             {summary.items.length === 0 ? (
-              <p className="summary-empty">Tidak ada data produksi untuk tanggal ini.</p>
+              <p className="text-center text-muted py-4 mb-0">Tidak ada data produksi untuk tanggal ini.</p>
             ) : (
               <>
-                <table className="summary-table">
-                  <thead>
-                    <tr>
-                      <th>Produk</th>
-                      <th>Shift 1</th>
-                      <th>Shift 2</th>
-                      <th>Shift 3</th>
-                      <th>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {summary.items.map((item) => (
-                      <tr key={item.productCode}>
-                        <td className="td-product">
-                          <span className="td-code">{item.productCode}</span>
-                          <span className="td-name">{item.productName}</span>
-                        </td>
-                        <td>{item.shifts["01"] || "-"}</td>
-                        <td>{item.shifts["02"] || "-"}</td>
-                        <td>{item.shifts["03"] || "-"}</td>
-                        <td className="td-total">{item.total}</td>
+                <div className="table-wrap">
+                  <table className="table table-bordered mb-1">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Produk</th>
+                        <th className="text-center">Shift 1</th>
+                        <th className="text-center">Shift 2</th>
+                        <th className="text-center">Shift 3</th>
+                        <th className="text-center">Total</th>
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="tr-grand">
-                      <td>Grand Total</td>
-                      <td>{summary.grandTotal["01"] || "-"}</td>
-                      <td>{summary.grandTotal["02"] || "-"}</td>
-                      <td>{summary.grandTotal["03"] || "-"}</td>
-                      <td className="td-total">{summary.grandTotal.total}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-                <p className="summary-row-count">{data.length} barcode tercatat</p>
+                    </thead>
+                    <tbody>
+                      {summary.items.map((item) => (
+                        <tr key={item.productCode}>
+                          <td>
+                            <div className="fw-semibold">{item.productName}</div>
+                            <div className="text-muted mono" style={{ fontSize: "0.8rem" }}>{item.productCode}</div>
+                          </td>
+                          <td className="text-center">{item.shifts["01"] || "-"}</td>
+                          <td className="text-center">{item.shifts["02"] || "-"}</td>
+                          <td className="text-center">{item.shifts["03"] || "-"}</td>
+                          <td className="text-center fw-bold text-primary">{item.total}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="fw-bold">
+                        <td>Grand Total</td>
+                        <td className="text-center">{summary.grandTotal["01"] || "-"}</td>
+                        <td className="text-center">{summary.grandTotal["02"] || "-"}</td>
+                        <td className="text-center">{summary.grandTotal["03"] || "-"}</td>
+                        <td className="text-center fw-bold text-primary">{summary.grandTotal.total}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <p className="text-center text-muted small mb-0">{dataCount} barcode tercatat</p>
               </>
             )}
-          </div>
+          </>
         )}
       </div>
     </div>

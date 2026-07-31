@@ -247,6 +247,11 @@
   letter-spacing: 0.02em;
 }
 
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: 0.02em;
+}
+
 .form-hint {
   font-size: 0.75rem;
   color: var(--text-muted);
