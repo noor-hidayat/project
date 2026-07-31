@@ -3,8 +3,7 @@ import { parseBarcode, generateBarcodeRange, validateQty } from "./lib/barcodePa
 import { getTodayDDMMYY } from "./lib/dateUtils";
 import { supabase } from "./lib/supabaseClient";
 import ScanForm from "./components/ScanForm";
-import ProductInfo from "./components/ProductInfo";
-import ResultList from "./components/ResultList";
+import DailySummary from "./components/DailySummary";
 import TransactionHistory from "./components/TransactionHistory";
 import LoginPage from "./components/LoginPage";
 import "./App.css";
@@ -13,13 +12,13 @@ const STORAGE_KEY = "barcode_app_user";
 
 function App() {
   const [user, setUser] = useState(() => sessionStorage.getItem(STORAGE_KEY));
+  const [view, setView] = useState("scan");
   const [formKey, setFormKey] = useState(0);
   const [productCode, setProductCode] = useState("");
   const [result, setResult] = useState(null);
   const [generated, setGenerated] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [view, setView] = useState("scan");
   const [transactions, setTransactions] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState("");
@@ -45,6 +44,7 @@ function App() {
     setProductCode("");
     setResult(null);
     setSaveError("");
+    setView("scan");
   }, []);
 
   const handleViewHistory = useCallback(async () => {
@@ -73,16 +73,16 @@ function App() {
       grouped[key].qty++;
     }
 
-    const transactions = Object.values(grouped).sort((a, b) =>
+    const items = Object.values(grouped).sort((a, b) =>
       new Date(b.created_at) - new Date(a.created_at)
     );
 
-    setTransactions(transactions);
+    setTransactions(items);
     setLoadingHistory(false);
   }, []);
 
-  const handleBackToScan = useCallback(() => {
-    setView("scan");
+  const handleViewSummary = useCallback(() => {
+    setView("summary");
   }, []);
 
   const handleGenerate = useCallback(async ({ barcode, barcodeDate, barcodeShift, productionDate, shift: formShift, qty, operator }) => {
@@ -210,7 +210,7 @@ function App() {
         <nav className="app-nav">
           <button
             className={"nav-btn" + (view === "scan" ? " active" : "")}
-            onClick={handleBackToScan}
+            onClick={() => setView("scan")}
           >
             Scan
           </button>
@@ -219,6 +219,12 @@ function App() {
             onClick={handleViewHistory}
           >
             Riwayat
+          </button>
+          <button
+            className={"nav-btn" + (view === "summary" ? " active" : "")}
+            onClick={handleViewSummary}
+          >
+            Ringkasan
           </button>
         </nav>
         <div className="user-badge">
@@ -229,25 +235,25 @@ function App() {
 
       <main>
         {view === "scan" ? (
-          <>
-            <ScanForm
-              key={formKey}
-              generated={generated}
-              onGenerate={handleGenerate}
-              onSave={handleSave}
-              saving={saving}
-              saveError={saveError}
-              result={result}
-              onNewTransaction={handleNewTransaction}
-            />
-          </>
-        ) : (
+          <ScanForm
+            key={formKey}
+            generated={generated}
+            onGenerate={handleGenerate}
+            onSave={handleSave}
+            saving={saving}
+            saveError={saveError}
+            result={result}
+            onNewTransaction={handleNewTransaction}
+          />
+        ) : view === "history" ? (
           <TransactionHistory
             transactions={transactions}
             loading={loadingHistory}
             error={historyError}
-            onBackToScan={handleBackToScan}
+            onBackToScan={() => setView("scan")}
           />
+        ) : (
+          <DailySummary />
         )}
       </main>
     </div>
