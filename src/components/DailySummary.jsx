@@ -8,117 +8,171 @@ function ddmmyyFromDateValue(dateVal) {
   return d + m + y.slice(2);
 }
 
+function daysAgoDDMMYY(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}${pad(d.getMonth() + 1)}${String(d.getFullYear()).slice(2)}`;
+}
+
 export default function DailySummary() {
-  const [dateRaw, setDateRaw] = useState("");
+  const [startRaw, setStartRaw] = useState("");
+  const [endRaw, setEndRaw] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [dataCount, setDataCount] = useState(0);
   const [summary, setSummary] = useState(null);
-  const datePickerRef = useRef(null);
+  const startPickerRef = useRef(null);
+  const endPickerRef = useRef(null);
 
   useEffect(() => {
-    setDateRaw(getTodayDDMMYY());
+    const today = getTodayDDMMYY();
+    setStartRaw(today);
+    setEndRaw(today);
   }, []);
 
   useEffect(() => {
-    if (!dateRaw || dateRaw.length !== 6) return;
+    if (!startRaw || !endRaw || startRaw.length !== 6 || endRaw.length !== 6) return;
 
     let cancelled = false;
     setLoading(true);
     setError("");
 
-    const dateValue = ddmmyyToDateValue(dateRaw);
+    const startValue = ddmmyyToDateValue(startRaw);
+    const endValue = ddmmyyToDateValue(endRaw);
 
-    supabase
+    let query = supabase
       .from("scan_logs")
       .select("product_code, product_name, shift")
-      .eq("production_date", dateValue)
-      .then(({ data: rows, error: err }) => {
-        if (cancelled) return;
-        setLoading(false);
+      .gte("production_date", startValue);
 
-        if (err) {
-          setError("Gagal memuat data: " + err.message);
-          return;
+    query = endRaw === startRaw
+      ? query.eq("production_date", startValue)
+      : query.lte("production_date", endValue);
+
+    query.then(({ data: rows, error: err }) => {
+      if (cancelled) return;
+      setLoading(false);
+
+      if (err) {
+        setError("Gagal memuat data: " + err.message);
+        return;
+      }
+
+      setDataCount((rows || []).length);
+
+      const prodMap = {};
+      for (const row of rows || []) {
+        const key = row.product_code;
+        if (!prodMap[key]) {
+          prodMap[key] = {
+            productCode: row.product_code,
+            productName: row.product_name || "(tanpa nama)",
+            shifts: { "01": 0, "02": 0, "03": 0 },
+          };
         }
-
-        setDataCount((rows || []).length);
-
-        const prodMap = {};
-        for (const row of rows || []) {
-          const key = row.product_code;
-          if (!prodMap[key]) {
-            prodMap[key] = {
-              productCode: row.product_code,
-              productName: row.product_name || "(tanpa nama)",
-              shifts: { "01": 0, "02": 0, "03": 0 },
-            };
-          }
-          const s = row.shift;
-          if (prodMap[key].shifts[s] !== undefined) {
-            prodMap[key].shifts[s]++;
-          }
+        const s = row.shift;
+        if (prodMap[key].shifts[s] !== undefined) {
+          prodMap[key].shifts[s]++;
         }
+      }
 
-        const grandTotal = { "01": 0, "02": 0, "03": 0, total: 0 };
-        const items = Object.values(prodMap);
-        for (const item of items) {
-          item.total = item.shifts["01"] + item.shifts["02"] + item.shifts["03"];
-          grandTotal["01"] += item.shifts["01"];
-          grandTotal["02"] += item.shifts["02"];
-          grandTotal["03"] += item.shifts["03"];
-          grandTotal.total += item.total;
-        }
+      const grandTotal = { "01": 0, "02": 0, "03": 0, total: 0 };
+      const items = Object.values(prodMap);
+      for (const item of items) {
+        item.total = item.shifts["01"] + item.shifts["02"] + item.shifts["03"];
+        grandTotal["01"] += item.shifts["01"];
+        grandTotal["02"] += item.shifts["02"];
+        grandTotal["03"] += item.shifts["03"];
+        grandTotal.total += item.total;
+      }
 
-        setSummary({ items, grandTotal });
-      });
+      setSummary({ items, grandTotal });
+    });
 
     return () => { cancelled = true; };
-  }, [dateRaw]);
+  }, [startRaw, endRaw]);
 
-  const handleDatePick = useCallback((e) => {
+  const handleStartPick = useCallback((e) => {
     const val = e.target.value;
     if (!val) return;
-    setDateRaw(ddmmyyFromDateValue(val));
+    setStartRaw(ddmmyyFromDateValue(val));
   }, []);
 
-  const goToday = useCallback(() => {
-    setDateRaw(getTodayDDMMYY());
+  const handleEndPick = useCallback((e) => {
+    const val = e.target.value;
+    if (!val) return;
+    setEndRaw(ddmmyyFromDateValue(val));
   }, []);
 
-  const dateLabel = dateRaw ? ddmmyyToDDMMYYYY(dateRaw) : "";
+  const setRange = useCallback((start, end) => {
+    setStartRaw(start);
+    setEndRaw(end);
+  }, []);
+
+  const startLabel = startRaw ? ddmmyyToDDMMYYYY(startRaw) : "";
+  const endLabel = endRaw ? ddmmyyToDDMMYYYY(endRaw) : "";
+  const rangeLabel = startLabel === endLabel ? startLabel : `${startLabel} s/d ${endLabel}`;
 
   return (
     <div className="card">
       <div className="card-header d-flex align-items-center">
         <i className="bi bi-bar-chart-line fs-4 me-2"/>
-        <h5 className="mb-0">Ringkasan Harian</h5>
+        <h5 className="mb-0">Ringkasan Produksi</h5>
       </div>
       <div className="card-body">
         <div className="mb-3">
-          <label className="form-label">Tanggal Produksi</label>
-          <div className="d-flex gap-2 align-items-center">
-            <div className="input-group input-group-sm" style={{ maxWidth: 300 }}>
-              <button className="btn btn-outline-secondary" onClick={() => datePickerRef.current?.showPicker()}>
-                <i className="bi bi-calendar3"/>
-              </button>
+          <label className="form-label">Rentang Tanggal Produksi</label>
+          <div className="d-flex flex-wrap gap-2 align-items-center">
+            <div className="input-group input-group-sm" style={{ width: 190 }}>
+              <span className="input-group-text">Dari</span>
               <input
                 className="form-control mono"
                 type="text"
-                value={dateLabel}
+                value={startLabel}
                 placeholder="DD-MM-YYYY"
                 readOnly
               />
+              <button className="btn btn-outline-secondary" onClick={() => startPickerRef.current?.showPicker()}>
+                <i className="bi bi-calendar3"/>
+              </button>
               <input
-                ref={datePickerRef}
+                ref={startPickerRef}
                 type="date"
-                onChange={handleDatePick}
+                onChange={handleStartPick}
                 style={{ position: "absolute", top: "100%", left: 0, opacity: 0, height: 0, pointerEvents: "none" }}
               />
-              <button className="btn btn-outline-primary" onClick={goToday}>
-                <i className="bi bi-clock me-1"/>Hari Ini
-              </button>
             </div>
+            <div className="input-group input-group-sm" style={{ width: 190 }}>
+              <span className="input-group-text">Sampai</span>
+              <input
+                className="form-control mono"
+                type="text"
+                value={endLabel}
+                placeholder="DD-MM-YYYY"
+                readOnly
+              />
+              <button className="btn btn-outline-secondary" onClick={() => endPickerRef.current?.showPicker()}>
+                <i className="bi bi-calendar3"/>
+              </button>
+              <input
+                ref={endPickerRef}
+                type="date"
+                onChange={handleEndPick}
+                style={{ position: "absolute", top: "100%", left: 0, opacity: 0, height: 0, pointerEvents: "none" }}
+              />
+            </div>
+          </div>
+          <div className="d-flex flex-wrap gap-1 mt-2">
+            <button className="btn btn-outline-primary btn-sm" onClick={() => setRange(getTodayDDMMYY(), getTodayDDMMYY())}>
+              <i className="bi bi-clock me-1"/>Hari Ini
+            </button>
+            <button className="btn btn-outline-primary btn-sm" onClick={() => setRange(daysAgoDDMMYY(6), getTodayDDMMYY())}>
+              7 Hari
+            </button>
+            <button className="btn btn-outline-primary btn-sm" onClick={() => setRange(daysAgoDDMMYY(29), getTodayDDMMYY())}>
+              30 Hari
+            </button>
           </div>
         </div>
 
@@ -128,9 +182,12 @@ export default function DailySummary() {
         {summary && !loading && (
           <>
             {summary.items.length === 0 ? (
-              <p className="text-center text-muted py-4 mb-0">Tidak ada data produksi untuk tanggal ini.</p>
+              <p className="text-center text-muted py-4 mb-0">Tidak ada data produksi untuk rentang tanggal ini.</p>
             ) : (
               <>
+                <p className="text-muted small mb-2">
+                  <i className="bi bi-calendar-range me-1"/>{rangeLabel}
+                </p>
                 <div className="table-wrap">
                   <table className="summary-table">
                     <thead>
