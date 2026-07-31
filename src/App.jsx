@@ -90,7 +90,7 @@ function App() {
       new Date(b.created_at) - new Date(a.created_at)
     );
 
-    setTransactions(items);
+    setTransactions(items.slice(0, 20));
     setLoadingHistory(false);
   }, []);
 

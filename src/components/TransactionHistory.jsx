@@ -88,9 +88,10 @@ export default function TransactionHistory({ transactions, loading, error, onBac
                 <td>
                   <button
                     className="btn-expand"
+                    title="Lihat detail"
                     onClick={() => openModal(t.trx_code, t.product_name || t.product_code, t.trx_code)}
                   >
-                    &#9654;
+                    <i className="bi bi-eye" />
                   </button>
                 </td>
               </tr>
