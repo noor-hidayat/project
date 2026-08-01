@@ -1298,12 +1298,21 @@
 
 @media print {
   @page {
-    margin: 14mm 12mm;
+    margin: 10mm 10mm 10mm 10mm;
   }
 
   body {
     margin: 0;
     padding: 0;
+  }
+
+  .app,
+  main,
+  #root {
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    display: block;
   }
 
   body * {
@@ -1324,15 +1333,20 @@
     color: #000;
   }
 
-  .card-body > :not(.print-report) {
-    display: none;
-  }
-
+  .app-header,
   .card-header {
     display: none;
   }
 
+  .card-body > :not(.print-report) {
+    display: none;
+  }
+
   .card {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
     overflow: visible;
   }
 
@@ -1345,11 +1359,13 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #000;
   }
 
   .print-report-head h1 {
-    font-size: 18px;
+    font-size: 16px;
     margin: 0 0 4px;
     letter-spacing: 0.02em;
   }
@@ -1367,6 +1383,7 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 10px;
+    margin-top: 8px;
   }
 
   .print-report-table th,
