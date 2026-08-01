@@ -9,6 +9,37 @@ function ddmmyyFromDateValue(dateVal) {
   return d + m + y.slice(2);
 }
 
+function formatSisaRanges(barcodes) {
+  if (!barcodes || barcodes.length === 0) return "";
+  const byPrefix = {};
+  for (const bc of barcodes) {
+    const prefix = bc.slice(0, -3);
+    const serial = parseInt(bc.slice(-3), 10);
+    if (isNaN(serial)) continue;
+    (byPrefix[prefix] = byPrefix[prefix] || []).push(serial);
+  }
+  const parts = [];
+  for (const [prefix, serials] of Object.entries(byPrefix)) {
+    const nums = [...new Set(serials)].sort((a, b) => a - b);
+    const ranges = [];
+    let start = nums[0];
+    let prev = nums[0];
+    for (let i = 1; i <= nums.length; i++) {
+      if (i < nums.length && nums[i] === prev + 1) {
+        prev = nums[i];
+      } else {
+        const s = String(start).padStart(3, "0");
+        const e = String(prev).padStart(3, "0");
+        ranges.push(start === prev ? s : s + " s/d " + e);
+        start = nums[i];
+        prev = nums[i];
+      }
+    }
+    parts.push(prefix + ranges.join(", "));
+  }
+  return parts.join("; ");
+}
+
 export default function DailySummary() {
   const [dateRaw, setDateRaw] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,7 +64,7 @@ export default function DailySummary() {
 
     supabase
       .from("scan_logs")
-      .select("product_code, product_name, shift")
+      .select("product_code, product_name, shift, bahan_sisa, barcode")
       .eq("production_date", dateValue)
       .then(({ data: rows, error: err }) => {
         if (cancelled) return;
@@ -53,21 +84,31 @@ export default function DailySummary() {
             prodMap[key] = {
               productCode: row.product_code,
               productName: row.product_name || "(tanpa nama)",
-              shifts: { "01": 0, "02": 0 },
+              shifts: {
+                "01": { count: 0, sisa: 0, sisaBarcodes: [] },
+                "02": { count: 0, sisa: 0, sisaBarcodes: [] },
+              },
             };
           }
           const s = row.shift;
           if (prodMap[key].shifts[s] !== undefined) {
-            prodMap[key].shifts[s]++;
+            prodMap[key].shifts[s].count++;
+            if (row.bahan_sisa === true || row.bahan_sisa === "true") {
+              prodMap[key].shifts[s].sisa++;
+              prodMap[key].shifts[s].sisaBarcodes.push(row.barcode);
+            }
           }
         }
 
-        const grandTotal = { "01": 0, "02": 0, total: 0 };
+        const grandTotal = { "01": 0, "02": 0, total: 0, sisa1: 0, sisa2: 0 };
         const items = Object.values(prodMap);
         for (const item of items) {
-          item.total = item.shifts["01"] + item.shifts["02"];
-          grandTotal["01"] += item.shifts["01"];
-          grandTotal["02"] += item.shifts["02"];
+          item.total = item.shifts["01"].count + item.shifts["02"].count;
+          item.sisaTotal = item.shifts["01"].sisa + item.shifts["02"].sisa;
+          grandTotal["01"] += item.shifts["01"].count;
+          grandTotal["02"] += item.shifts["02"].count;
+          grandTotal.sisa1 += item.shifts["01"].sisa;
+          grandTotal.sisa2 += item.shifts["02"].sisa;
           grandTotal.total += item.total;
         }
 
@@ -88,6 +129,14 @@ export default function DailySummary() {
   }, []);
 
   const dateLabel = dateRaw ? ddmmyyToDDMMYYYY(dateRaw) : "";
+
+  const handlePrint = useCallback(() => {
+    if (!summary || summary.items.length === 0) {
+      alert("Tidak ada data untuk tanggal " + dateLabel);
+      return;
+    }
+    window.print();
+  }, [summary, dateLabel]);
 
   const handleExport = useCallback(async () => {
     if (!dateRaw || dateRaw.length !== 6) return;
@@ -168,14 +217,24 @@ export default function DailySummary() {
           <button className="btn btn-sm btn-outline-primary" onClick={goToday}>
             Hari Ini
           </button>
-          <button
-            className="btn btn-sm btn-success export-btn"
-            onClick={handleExport}
-            disabled={exporting}
-          >
-            <i className={"bi " + (exporting ? "bi-hourglass-split" : "bi-download") + " me-1"}/>
-            {exporting ? "Exporting..." : "Export"}
-          </button>
+          <div className="ms-auto d-flex summary-actions">
+            <button
+              className="btn btn-sm btn-outline-secondary export-btn"
+              onClick={handlePrint}
+              title="Cetak laporan PDF"
+            >
+              <i className="bi bi-printer me-1"/>
+              Cetak
+            </button>
+            <button
+              className="btn btn-sm btn-success export-btn"
+              onClick={handleExport}
+              disabled={exporting}
+            >
+              <i className={"bi " + (exporting ? "bi-hourglass-split" : "bi-download") + " me-1"}/>
+              {exporting ? "Exporting..." : "Export"}
+            </button>
+          </div>
         </div>
 
         {loading && <div className="alert alert-info py-2">Memuat data...</div>}
@@ -218,8 +277,8 @@ export default function DailySummary() {
                             <div className="summary-prod-name">{item.productName}</div>
                             <div className="summary-prod-code">{item.productCode}</div>
                           </td>
-                          <td className="text-center">{item.shifts["01"] || "-"}</td>
-                          <td className="text-center">{item.shifts["02"] || "-"}</td>
+                          <td className="text-center">{item.shifts["01"].count || "-"}</td>
+                          <td className="text-center">{item.shifts["02"].count || "-"}</td>
                           <td className="text-center summary-cell-total">{item.total} <span className="summary-unit">Box</span></td>
                         </tr>
                       ))}
@@ -238,6 +297,73 @@ export default function DailySummary() {
               </>
             )}
           </>
+        )}
+
+        {summary && summary.items.length > 0 && (
+          <div className="print-report">
+            <div className="print-report-head">
+              <div>
+                <h1>LAPORAN HARIAN PRODUKSI</h1>
+                <p>Tanggal Produksi: <strong>{dateLabel}</strong></p>
+              </div>
+              <div className="print-report-meta">
+                <p>Dicetak: {new Date().toLocaleString("id-ID")}</p>
+              </div>
+            </div>
+            <table className="print-report-table">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Kode Item</th>
+                  <th>Nama Item</th>
+                  <th>Shift 1 (Box)</th>
+                  <th>Shift 2 (Box)</th>
+                  <th>Total (Box)</th>
+                  <th>Keterangan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.items.map((item, i) => {
+                  const notes = [];
+                  if (item.shifts["01"].sisa > 0) {
+                    const rng = formatSisaRanges(item.shifts["01"].sisaBarcodes);
+                    notes.push("Bahan sisa Shift 1 = " + item.shifts["01"].sisa + " box" + (rng ? " (" + rng + ")" : ""));
+                  }
+                  if (item.shifts["02"].sisa > 0) {
+                    const rng = formatSisaRanges(item.shifts["02"].sisaBarcodes);
+                    notes.push("Bahan sisa Shift 2 = " + item.shifts["02"].sisa + " box" + (rng ? " (" + rng + ")" : ""));
+                  }
+                  return (
+                    <tr key={item.productCode}>
+                      <td className="c">{i + 1}</td>
+                      <td>{item.productCode}</td>
+                      <td>{item.productName}</td>
+                      <td className="c">{item.shifts["01"].count || "-"}</td>
+                      <td className="c">{item.shifts["02"].count || "-"}</td>
+                      <td className="c">{item.total}</td>
+                      <td className="sisa-note">{notes.length ? notes.join("; ") : "-"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="grand">
+                  <td colSpan="3">GRAND TOTAL</td>
+                  <td className="c">{summary.grandTotal["01"]}</td>
+                  <td className="c">{summary.grandTotal["02"]}</td>
+                  <td className="c">{summary.grandTotal.total}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+            <p className="print-report-foot">Total {dataCount} barcode tercatat</p>
+            <div className="print-report-sign">
+              <div>
+                <p>Mengetahui,</p>
+                <p className="sign-line">........................</p>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
