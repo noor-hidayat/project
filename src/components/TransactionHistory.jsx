@@ -3,18 +3,19 @@ import { supabase } from "../lib/supabaseClient";
 import { addAuditLog } from "../lib/auditLog";
 
 const SHIFTS = ["01", "02"];
-const PAGE_SIZE = 20;
+const PER_PAGE_OPTIONS = [20, 50, 100];
 
 function fmtProdDate(d) {
   return d?.split("-").reverse().join("-") || "-";
 }
 
-export default function TransactionHistory({ canEditDelete, onBackToScan }) {
+export default function TransactionHistory({ canEdit, canDelete, onBackToScan }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(20);
   const [modalTrx, setModalTrx] = useState(null);
   const [modalProduct, setModalProduct] = useState("");
   const [modalCode, setModalCode] = useState("");
@@ -24,7 +25,7 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
   const [filterDate, setFilterDate] = useState("");
   const [filterShift, setFilterShift] = useState("");
   const [editTrx, setEditTrx] = useState(null);
-  const [editForm, setEditForm] = useState({ shift: "", operator: "", production_date: "" });
+  const [editForm, setEditForm] = useState({ shift: "", operator: "", production_date: "", bahan_sisa: false });
   const [editing, setEditing] = useState(false);
   const [editError, setEditError] = useState("");
   const [deleteTrx, setDeleteTrx] = useState(null);
@@ -42,7 +43,10 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
 
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
@@ -73,12 +77,11 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    setLoadingMore(false);
 
     const query = baseQueryRef.current()
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
-      .range(0, PAGE_SIZE - 1);
+      .range((page - 1) * perPage, page * perPage - 1);
 
     const { data, count, error: err } = await query;
 
@@ -91,34 +94,14 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
     setTransactions(data || []);
     setTotal(count ?? 0);
     setLoading(false);
-  }, []);
-
-  const loadMore = useCallback(async () => {
-    if (loadingMore) return;
-    const start = transactions.length;
-    if (start >= total) return;
-
-    setLoadingMore(true);
-    const query = baseQueryRef.current()
-      .select("*")
-      .order("created_at", { ascending: false })
-      .range(start, start + PAGE_SIZE - 1);
-    const { data, error: err } = await query;
-
-    setLoadingMore(false);
-
-    if (err) {
-      setError(err.message);
-      return;
-    }
-
-    setTransactions((cur) => [...cur, ...(data || [])]);
-  }, [loadingMore, transactions.length, total]);
+  }, [page, perPage]);
 
   useEffect(() => {
     const t = setTimeout(() => load(), 50);
     return () => clearTimeout(t);
   }, [load, baseQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -136,6 +119,7 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
     setDebouncedSearch("");
     setFilterDate("");
     setFilterShift("");
+    setPage(1);
   }
 
   async function openModal(trx, product, code) {
@@ -163,14 +147,30 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
     setBarcodes([]);
   }
 
-  function openEdit(trx) {
+  async function openEdit(trx) {
+    setEditError("");
+
+    const { data, error: err } = await supabase
+      .from("scan_logs")
+      .select("bahan_sisa")
+      .eq("trx_code", trx.trx_code)
+      .limit(1);
+
+    const curBahanSisa = !err && data && data.length > 0
+      ? (data[0].bahan_sisa === true || data[0].bahan_sisa === "true")
+      : false;
+
+    setEditTrx({ ...trx, bahan_sisa: curBahanSisa });
     setEditForm({
       shift: trx.shift || "",
       operator: trx.operator || "",
       production_date: trx.production_date || "",
+      bahan_sisa: curBahanSisa,
     });
-    setEditError("");
-    setEditTrx(trx);
+  }
+
+    function shiftLabel(v) {
+    return v === "01" ? "Shift 1" : v === "02" ? "Shift 2" : (v || "-");
   }
 
   async function handleSaveEdit(e) {
@@ -178,9 +178,28 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
     if (!editTrx) return;
 
     const payload = {};
-    if (editForm.shift) payload.shift = editForm.shift;
-    if (editForm.operator !== undefined) payload.operator = editForm.operator;
-    if (editForm.production_date) payload.production_date = editForm.production_date;
+    const changes = [];
+    if (editForm.shift && editForm.shift !== editTrx.shift) {
+      payload.shift = editForm.shift;
+      changes.push(`shift: ${shiftLabel(editTrx.shift)} → ${shiftLabel(editForm.shift)}`);
+    }
+    if (editForm.operator !== undefined && editForm.operator !== (editTrx.operator || "")) {
+      payload.operator = editForm.operator;
+      changes.push(`operator: ${editTrx.operator || "-"} → ${editForm.operator || "-"}`);
+    }
+    if (editForm.production_date && editForm.production_date !== editTrx.production_date) {
+      payload.production_date = editForm.production_date;
+      changes.push(`tanggal produksi: ${fmtProdDate(editTrx.production_date)} → ${fmtProdDate(editForm.production_date)}`);
+    }
+
+    const curBahanSisa = editTrx.bahan_sisa === true || editTrx.bahan_sisa === "true";
+    const newBahanSisa = !!editForm.bahan_sisa;
+    if (newBahanSisa !== curBahanSisa) {
+      payload.bahan_sisa = newBahanSisa;
+      changes.push(
+        `bahan sisa: ${curBahanSisa ? "bahan sisa" : "bukan bahan sisa"} → ${newBahanSisa ? "bahan sisa" : "bukan bahan sisa"}`
+      );
+    }
 
     if (Object.keys(payload).length === 0) {
       setEditError("Tidak ada perubahan");
@@ -207,7 +226,7 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
     addAuditLog({
       username: actor?.username,
       action: "transaction_edit",
-      detail: `${editTrx.trx_code} · shift/operator/tanggal diubah`,
+      detail: `${editTrx.trx_code} · ${changes.join("; ")}`,
     });
   }
 
@@ -303,7 +322,7 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
               type="date"
               className="form-control form-control-sm"
               value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
+              onChange={(e) => { setFilterDate(e.target.value); setPage(1); }}
             />
           </div>
           <div className="history-filter-item">
@@ -313,7 +332,7 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
             <select
               className="form-select form-select-sm"
               value={filterShift}
-              onChange={(e) => setFilterShift(e.target.value)}
+              onChange={(e) => { setFilterShift(e.target.value); setPage(1); }}
             >
               <option value="">Semua</option>
               {SHIFTS.map((s) => (
@@ -362,7 +381,7 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
                       >
                         <i className="bi bi-eye" />
                       </button>
-                      {canEditDelete && (
+                      {(canEdit || canDelete) && (
                         <div className="row-menu" ref={menuOpen === t.trx_code ? menuRef : null}>
                           <button
                             className={"btn-expand row-menu-toggle" + (menuOpen === t.trx_code ? " active" : "")}
@@ -376,26 +395,30 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
                           </button>
                           {menuOpen === t.trx_code && (
                             <div className="row-menu-dropdown">
-                              <button
-                                className="row-menu-item"
-                                onClick={() => {
-                                  setMenuOpen("");
-                                  openEdit(t);
-                                }}
-                              >
-                                <i className="bi bi-pencil" />
-                                Edit
-                              </button>
-                              <button
-                                className="row-menu-item danger"
-                                onClick={() => {
-                                  setMenuOpen("");
-                                  setDeleteTrx(t);
-                                }}
-                              >
-                                <i className="bi bi-trash" />
-                                Hapus
-                              </button>
+                              {canEdit && (
+                                <button
+                                  className="row-menu-item"
+                                  onClick={() => {
+                                    setMenuOpen("");
+                                    openEdit(t);
+                                  }}
+                                >
+                                  <i className="bi bi-pencil" />
+                                  Edit
+                                </button>
+                              )}
+                              {canDelete && (
+                                <button
+                                  className="row-menu-item danger"
+                                  onClick={() => {
+                                    setMenuOpen("");
+                                    setDeleteTrx(t);
+                                  }}
+                                >
+                                  <i className="bi bi-trash" />
+                                  Hapus
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -409,21 +432,54 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
         </table>
       </div>
 
-      {transactions.length > 0 && transactions.length < total && (
-        <div className="history-loadmore">
-          <button
-            className="btn btn-sm btn-outline-primary"
-            onClick={loadMore}
-            disabled={loadingMore}
+      <div className="history-pagination">
+        <div className="history-pagination-left">
+          <select
+            className="form-select form-select-sm page-size-select"
+            value={perPage}
+            onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
           >
-            <i className={"bi " + (loadingMore ? "bi-hourglass-split" : "bi-plus-lg") + " me-1"}/>
-            {loadingMore ? "Memuat..." : "Muat lebih banyak"}
+            {PER_PAGE_OPTIONS.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+          <button
+            className="page-btn"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            title="Halaman sebelumnya"
+          >
+            <i className="bi bi-chevron-left" />
           </button>
-          <span className="history-loadmore-count">
-            Menampilkan {transactions.length} dari {total} transaksi
+          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+            let num;
+            if (totalPages <= 5) num = i + 1;
+            else if (page <= 3) num = i + 1;
+            else if (page >= totalPages - 2) num = totalPages - 4 + i;
+            else num = page - 2 + i;
+            return (
+              <button
+                key={num}
+                className={"page-btn page-num" + (num === page ? " active" : "")}
+                onClick={() => setPage(num)}
+              >
+                {num}
+              </button>
+            );
+          })}
+          <button
+            className="page-btn"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            title="Halaman berikutnya"
+          >
+            <i className="bi bi-chevron-right" />
+          </button>
+          <span className="history-pagination-count">
+            {total} transaksi
           </span>
         </div>
-      )}
+      </div>
 
       {modalTrx && (
         <div className="modal-overlay" onClick={closeModal}>
@@ -518,6 +574,20 @@ export default function TransactionHistory({ canEditDelete, onBackToScan }) {
                     value={editForm.production_date}
                     onChange={(e) => setEditForm({ ...editForm, production_date: e.target.value })}
                   />
+                </div>
+
+                <div className="form-check form-switch mb-3 ps-0">
+                  <div className="form-check-inline d-flex align-items-center gap-2">
+                    <input
+                      id="editBahanSisa"
+                      className="form-check-input m-0"
+                      type="checkbox"
+                      role="switch"
+                      checked={editForm.bahan_sisa}
+                      onChange={(e) => setEditForm({ ...editForm, bahan_sisa: e.target.checked })}
+                    />
+                    <label className="form-label mb-0" htmlFor="editBahanSisa">Bahan Sisa</label>
+                  </div>
                 </div>
 
                 {editError && <div className="alert alert-danger py-2">{editError}</div>}

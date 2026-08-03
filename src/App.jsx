@@ -38,6 +38,10 @@ export function canManageUsers(user) {
 }
 
 export function canEditTransactions(user) {
+  return !!user && (user.role === "admin" || SUPERVISOR_ROLES.includes(user.role) || user.role === "superadmin");
+}
+
+export function canDeleteTransactions(user) {
   return !!user && (SUPERVISOR_ROLES.includes(user.role) || user.role === "superadmin");
 }
 
@@ -420,7 +424,8 @@ function App() {
             )
           ) : view === "history" ? (
             <TransactionHistory
-              canEditDelete={canEditTransactions(user)}
+              canEdit={canEditTransactions(user)}
+              canDelete={canDeleteTransactions(user)}
               onBackToScan={canInput(user) ? () => setView("scan") : null}
             />
           ) : view === "users" ? (
