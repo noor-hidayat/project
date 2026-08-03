@@ -190,78 +190,81 @@ export default function DailySummary() {
   }, [dateRaw, dateLabel]);
 
   return (
-    <div className="card">
-      <div className="card-header d-flex align-items-center">
-        <i className="bi bi-bar-chart-line fs-4 me-2"/>
-        <h5 className="mb-0">Ringkasan Harian</h5>
-      </div>
-      <div className="card-body">
-        <div className="summary-toolbar">
-          <div className="input-group input-group-sm" style={{ width: 210 }}>
-            <span className="input-group-text"><i className="bi bi-calendar3"/></span>
-            <input
-              className="form-control mono"
-              type="text"
-              value={dateLabel}
-              placeholder="DD-MM-YYYY"
-              readOnly
-              onPointerDown={() => datePickerRef.current?.showPicker()}
-            />
-            <input
-              ref={datePickerRef}
-              type="date"
-              onChange={handleDatePick}
-              style={{ position: "absolute", top: "100%", left: 0, opacity: 0, height: 0, pointerEvents: "none" }}
-            />
-          </div>
-          <button className="btn btn-sm btn-outline-primary" onClick={goToday}>
-            Hari Ini
-          </button>
-          <div className="ms-auto d-flex summary-actions">
-            <button
-              className="btn btn-sm btn-outline-secondary export-btn"
-              onClick={handlePrint}
-              title="Cetak laporan PDF"
-            >
-              <i className="bi bi-printer me-1"/>
-              Cetak
-            </button>
-            <button
-              className="btn btn-sm btn-success export-btn"
-              onClick={handleExport}
-              disabled={exporting}
-            >
-              <i className={"bi " + (exporting ? "bi-hourglass-split" : "bi-download") + " me-1"}/>
-              {exporting ? "Exporting..." : "Export"}
-            </button>
-          </div>
+    <div className="summary-page">
+      <div className="summary-page-head">
+        <div>
+          <h2>Ringkasan Harian</h2>
+          <p className="summary-subtitle">Ringkasan produksi barcode per tanggal &amp; shift</p>
         </div>
+        <span className="summary-count-badge">{dataCount} barcode</span>
+      </div>
 
-        {loading && <div className="alert alert-info py-2">Memuat data...</div>}
-        {error && <div className="alert alert-danger py-2">{error}</div>}
+      <div className="summary-toolbar">
+        <div className="input-group input-group-sm" style={{ width: 210 }}>
+          <span className="input-group-text"><i className="bi bi-calendar3"/></span>
+          <input
+            className="form-control mono"
+            type="text"
+            value={dateLabel}
+            placeholder="DD-MM-YYYY"
+            readOnly
+            onPointerDown={() => datePickerRef.current?.showPicker()}
+          />
+          <input
+            ref={datePickerRef}
+            type="date"
+            onChange={handleDatePick}
+            style={{ position: "absolute", top: "100%", left: 0, opacity: 0, height: 0, pointerEvents: "none" }}
+          />
+        </div>
+        <button className="btn btn-sm btn-outline-primary" onClick={goToday}>
+          Hari Ini
+        </button>
+        <div className="ms-auto d-flex summary-actions">
+          <button
+            className="btn btn-sm btn-outline-secondary export-btn"
+            onClick={handlePrint}
+            title="Cetak laporan PDF"
+          >
+            <i className="bi bi-printer me-1"/>
+            Cetak
+          </button>
+          <button
+            className="btn btn-sm btn-success export-btn"
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            <i className={"bi " + (exporting ? "bi-hourglass-split" : "bi-download") + " me-1"}/>
+            {exporting ? "Exporting..." : "Export"}
+          </button>
+        </div>
+      </div>
 
-        {summary && !loading && (
-          <>
-            {summary.items.length === 0 ? (
-              <p className="text-center text-muted py-4 mb-0">Tidak ada data produksi untuk tanggal ini.</p>
-            ) : (
-              <>
-                <div className="summary-cards">
-                  <div className="summary-card">
-                    <div className="summary-card-label"><i className="bi bi-sun-fill me-1"/>Shift 1</div>
-                    <div className="summary-card-value">{summary.grandTotal["01"] || 0}</div>
-                  </div>
-                  <div className="summary-card">
-                    <div className="summary-card-label"><i className="bi bi-moon-stars-fill me-1"/>Shift 2</div>
-                    <div className="summary-card-value">{summary.grandTotal["02"] || 0}</div>
-                  </div>
-                  <div className="summary-card summary-card-total">
-                    <div className="summary-card-label"><i className="bi bi-box-seam-fill me-1"/>Grand Total</div>
-                    <div className="summary-card-value">{summary.grandTotal.total} <span className="summary-unit">Box</span></div>
-                  </div>
+      {loading && <div className="alert alert-info py-2">Memuat data...</div>}
+      {error && <div className="alert alert-danger py-2">{error}</div>}
+
+      {summary && !loading && (
+        <>
+          {summary.items.length === 0 ? (
+            <p className="text-center text-muted py-4 mb-0">Tidak ada data produksi untuk tanggal ini.</p>
+          ) : (
+            <>
+              <div className="summary-cards">
+                <div className="summary-card">
+                  <div className="summary-card-label"><i className="bi bi-sun-fill me-1"/>Shift 1</div>
+                  <div className="summary-card-value">{summary.grandTotal["01"] || 0}</div>
                 </div>
-                <div className="table-wrap">
-                  <table className="summary-table">
+                <div className="summary-card">
+                  <div className="summary-card-label"><i className="bi bi-moon-stars-fill me-1"/>Shift 2</div>
+                  <div className="summary-card-value">{summary.grandTotal["02"] || 0}</div>
+                </div>
+                <div className="summary-card summary-card-total">
+                  <div className="summary-card-label"><i className="bi bi-box-seam-fill me-1"/>Grand Total</div>
+                  <div className="summary-card-value">{summary.grandTotal.total} <span className="summary-unit">Box</span></div>
+                </div>
+              </div>
+              <div className="table-wrap">
+                <table className="summary-table">
                     <thead>
                       <tr>
                         <th>Produk</th>
@@ -365,7 +368,6 @@ export default function DailySummary() {
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 }

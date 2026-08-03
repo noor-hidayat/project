@@ -1,12 +1,20 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { addAuditLog } from "../lib/auditLog";
+
+const SHIFTS = ["01", "02"];
+const PAGE_SIZE = 20;
 
 function fmtProdDate(d) {
   return d?.split("-").reverse().join("-") || "-";
 }
 
-export default function TransactionHistory({ transactions, loading, error, canEditDelete, onReload, onBackToScan }) {
+export default function TransactionHistory({ canEditDelete, onBackToScan }) {
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState("");
+  const [total, setTotal] = useState(0);
   const [modalTrx, setModalTrx] = useState(null);
   const [modalProduct, setModalProduct] = useState("");
   const [modalCode, setModalCode] = useState("");
@@ -22,6 +30,7 @@ export default function TransactionHistory({ transactions, loading, error, canEd
   const [deleteTrx, setDeleteTrx] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [menuOpen, setMenuOpen] = useState("");
   const [actor] = useState(() => {
     try {
       return JSON.parse(sessionStorage.getItem("barcode_app_user") || "null");
@@ -29,42 +38,105 @@ export default function TransactionHistory({ transactions, loading, error, canEd
       return null;
     }
   });
+  const menuRef = useRef(null);
 
-  const shifts = useMemo(() => {
-    return [...new Set(transactions.map((t) => t.shift))].filter(Boolean).sort();
-  }, [transactions]);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return transactions.filter((t) => {
-      if (q) {
-        const haystack = [
-          t.product_name,
-          t.product_code,
-          t.trx_code,
-          t.operator,
-          t.admin_user,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!haystack.includes(q)) return false;
+  const hasActiveFilter = search !== "" || filterDate !== "" || filterShift !== "";
+
+  const baseQuery = useCallback(() => {
+    const q = debouncedSearch.trim();
+    const query = supabase.from("trx_summary");
+    if (q) {
+      query.or([
+        `product_name.ilike.%${q}%`,
+        `product_code.ilike.%${q}%`,
+        `trx_code.ilike.%${q}%`,
+        `operator.ilike.%${q}%`,
+        `admin_user.ilike.%${q}%`,
+      ].join(","));
+    }
+    if (filterDate) query.eq("production_date", filterDate);
+    if (filterShift) query.eq("shift", filterShift);
+    return query;
+  }, [debouncedSearch, filterDate, filterShift]);
+
+  const baseQueryRef = useRef(baseQuery);
+  useEffect(() => {
+    baseQueryRef.current = baseQuery;
+  }, [baseQuery]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    setLoadingMore(false);
+
+    const query = baseQueryRef.current()
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(0, PAGE_SIZE - 1);
+
+    const { data, count, error: err } = await query;
+
+    if (err) {
+      setError(err.message);
+      setLoading(false);
+      return;
+    }
+
+    setTransactions(data || []);
+    setTotal(count ?? 0);
+    setLoading(false);
+  }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore) return;
+    const start = transactions.length;
+    if (start >= total) return;
+
+    setLoadingMore(true);
+    const query = baseQueryRef.current()
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(start, start + PAGE_SIZE - 1);
+    const { data, error: err } = await query;
+
+    setLoadingMore(false);
+
+    if (err) {
+      setError(err.message);
+      return;
+    }
+
+    setTransactions((cur) => [...cur, ...(data || [])]);
+  }, [loadingMore, transactions.length, total]);
+
+  useEffect(() => {
+    const t = setTimeout(() => load(), 50);
+    return () => clearTimeout(t);
+  }, [load, baseQuery]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDocClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen("");
       }
-      if (filterDate && t.production_date !== filterDate) return false;
-      if (filterShift && t.shift !== filterShift) return false;
-      return true;
-    });
-  }, [transactions, search, filterDate, filterShift]);
-
-  const hasActiveFilter = search.trim() !== "" || filterDate !== "" || filterShift !== "";
+    };
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, [menuOpen]);
 
   function resetFilters() {
     setSearch("");
+    setDebouncedSearch("");
     setFilterDate("");
     setFilterShift("");
   }
-
-  const visible = filtered.slice(0, 20);
 
   async function openModal(trx, product, code) {
     setModalTrx(trx);
@@ -131,7 +203,7 @@ export default function TransactionHistory({ transactions, loading, error, canEd
     }
 
     setEditTrx(null);
-    onReload();
+    load();
     addAuditLog({
       username: actor?.username,
       action: "transaction_edit",
@@ -158,7 +230,7 @@ export default function TransactionHistory({ transactions, loading, error, canEd
     }
 
     setDeleteTrx(null);
-    onReload();
+    load();
     addAuditLog({
       username: actor?.username,
       action: "transaction_delete",
@@ -174,7 +246,7 @@ export default function TransactionHistory({ transactions, loading, error, canEd
     return <div className="status status-error">{error}</div>;
   }
 
-  if (transactions.length === 0) {
+  if (total === 0 && !hasActiveFilter) {
     return (
       <div className="history-empty">
         <p>Belum ada transaksi.</p>
@@ -187,7 +259,7 @@ export default function TransactionHistory({ transactions, loading, error, canEd
     <div className="history-page">
       <div className="history-header">
         <h2>Riwayat Transaksi</h2>
-        <span className="history-count">Menampilkan {visible.length} dari {filtered.length} transaksi</span>
+        <span className="history-count">Menampilkan {transactions.length} dari {total} transaksi</span>
       </div>
 
       <div className="filter-panel">
@@ -244,7 +316,7 @@ export default function TransactionHistory({ transactions, loading, error, canEd
               onChange={(e) => setFilterShift(e.target.value)}
             >
               <option value="">Semua</option>
-              {shifts.map((s) => (
+              {SHIFTS.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
@@ -258,21 +330,21 @@ export default function TransactionHistory({ transactions, loading, error, canEd
             <tr>
               <th>Kode Transaksi</th>
               <th>Nama Produk</th>
-              <th>Tgl Produksi</th>
+              <th>Tanggal Produksi</th>
               <th>Shift</th>
-              <th>Jml Barcode</th>
+              <th>Jumlah</th>
               <th>Operator</th>
-              <th>Input By</th>
+              <th>Diinput Oleh</th>
               <th>Detail</th>
             </tr>
           </thead>
           <tbody>
-            {visible.length === 0 ? (
+            {transactions.length === 0 ? (
               <tr>
                 <td colSpan={8} className="history-no-result">Tidak ada data yang cocok dengan filter.</td>
               </tr>
             ) : (
-              visible.map((t) => (
+              transactions.map((t) => (
                 <tr key={t.trx_code}>
                   <td className="cell-mono">{t.trx_code || "-"}</td>
                   <td className="cell-product" title={t.product_name || t.product_code}>{t.product_name || t.product_code}</td>
@@ -282,7 +354,7 @@ export default function TransactionHistory({ transactions, loading, error, canEd
                   <td>{t.operator || "-"}</td>
                   <td className="cell-product" title={t.admin_user || "-"}>{t.admin_user || "-"}</td>
                   <td>
-                    <div className="d-flex align-items-center gap-1">
+                    <div className="row-actions">
                       <button
                         className="btn-expand"
                         title="Lihat detail"
@@ -291,22 +363,42 @@ export default function TransactionHistory({ transactions, loading, error, canEd
                         <i className="bi bi-eye" />
                       </button>
                       {canEditDelete && (
-                        <>
+                        <div className="row-menu" ref={menuOpen === t.trx_code ? menuRef : null}>
                           <button
-                            className="btn-expand btn-expand-edit"
-                            title="Edit transaksi"
-                            onClick={() => openEdit(t)}
+                            className={"btn-expand row-menu-toggle" + (menuOpen === t.trx_code ? " active" : "")}
+                            title="Keterangan"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuOpen((cur) => (cur === t.trx_code ? "" : t.trx_code));
+                            }}
                           >
-                            <i className="bi bi-pencil" />
+                            <i className="bi bi-three-dots-vertical" />
                           </button>
-                          <button
-                            className="btn-expand btn-expand-delete"
-                            title="Hapus transaksi"
-                            onClick={() => setDeleteTrx(t)}
-                          >
-                            <i className="bi bi-trash" />
-                          </button>
-                        </>
+                          {menuOpen === t.trx_code && (
+                            <div className="row-menu-dropdown">
+                              <button
+                                className="row-menu-item"
+                                onClick={() => {
+                                  setMenuOpen("");
+                                  openEdit(t);
+                                }}
+                              >
+                                <i className="bi bi-pencil" />
+                                Edit
+                              </button>
+                              <button
+                                className="row-menu-item danger"
+                                onClick={() => {
+                                  setMenuOpen("");
+                                  setDeleteTrx(t);
+                                }}
+                              >
+                                <i className="bi bi-trash" />
+                                Hapus
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </td>
@@ -316,6 +408,22 @@ export default function TransactionHistory({ transactions, loading, error, canEd
           </tbody>
         </table>
       </div>
+
+      {transactions.length > 0 && transactions.length < total && (
+        <div className="history-loadmore">
+          <button
+            className="btn btn-sm btn-outline-primary"
+            onClick={loadMore}
+            disabled={loadingMore}
+          >
+            <i className={"bi " + (loadingMore ? "bi-hourglass-split" : "bi-plus-lg") + " me-1"}/>
+            {loadingMore ? "Memuat..." : "Muat lebih banyak"}
+          </button>
+          <span className="history-loadmore-count">
+            Menampilkan {transactions.length} dari {total} transaksi
+          </span>
+        </div>
+      )}
 
       {modalTrx && (
         <div className="modal-overlay" onClick={closeModal}>

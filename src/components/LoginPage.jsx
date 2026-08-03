@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { addAuditLog } from "../lib/auditLog";
 import { hashPassword } from "../lib/passwordUtils";
+import logo from "../assets/logo.png";
 
 const REGISTER_TOKEN = "8522";
 
@@ -116,13 +117,15 @@ export default function LoginPage({ onLogin }) {
       <div className="card shadow-sm auth-card auth-hero" style={{ width: '100%' }}>
         <div className="card-body">
           <div className="text-center mb-3">
-            <div className="login-icon"><i className="bi bi-box-seam fs-4"/></div>
-            <h1 className="auth-title">Scan Barcode Produksi</h1>
-            <div className="auth-sub">Masuk untuk melanjutkan aplikasi produksi</div>
+            <div className="login-icon">
+              <img src={logo} alt="Trace Barcode" />
+            </div>
+            <h1 className="auth-title">Trace Barcode</h1>
           </div>
 
           {mode === "login" ? (
             <form onSubmit={handleLogin}>
+              <div className="auth-sub">Masuk untuk melanjutkan</div>
 
               <div className="mb-3">
                 <label className="form-label" htmlFor="username">Username</label>

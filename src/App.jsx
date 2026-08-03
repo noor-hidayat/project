@@ -10,6 +10,7 @@ import UserManagement from "./components/UserManagement";
 import AuditLog from "./components/AuditLog";
 import LoginPage from "./components/LoginPage";
 import ChangePasswordModal from "./components/ChangePasswordModal";
+import logo from "./assets/logo.png";
 import "./App.css";
 
 const STORAGE_KEY = "barcode_app_user";
@@ -124,9 +125,6 @@ function App() {
   const [generated, setGenerated] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [transactions, setTransactions] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [historyError, setHistoryError] = useState("");
 
   const todayLabel = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
@@ -179,39 +177,6 @@ function App() {
     return () => document.removeEventListener("click", onDocClick);
   }, [userMenuOpen]);
 
-  const fetchHistory = useCallback(async () => {
-    setLoadingHistory(true);
-    setHistoryError("");
-
-    const { data, error } = await supabase
-      .from("scan_logs")
-      .select("trx_code, product_name, product_code, production_date, shift, operator, admin_user, created_at")
-      .not("trx_code", "is", null)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      setHistoryError(error.message);
-      setLoadingHistory(false);
-      return;
-    }
-
-    const grouped = {};
-    for (const row of data || []) {
-      const key = row.trx_code;
-      if (!grouped[key]) {
-        grouped[key] = { ...row, qty: 0 };
-      }
-      grouped[key].qty++;
-    }
-
-    const items = Object.values(grouped).sort((a, b) =>
-      new Date(b.created_at) - new Date(a.created_at)
-    );
-
-    setTransactions(items);
-    setLoadingHistory(false);
-  }, []);
-
   const handleNewTransaction = useCallback(() => {
     setFormKey((k) => k + 1);
     setProductCode("");
@@ -222,11 +187,8 @@ function App() {
 
   const goTo = useCallback((nextView) => {
     setSidebarOpen(false);
-    if (nextView === "history") {
-      fetchHistory();
-    }
     setView(nextView);
-  }, [fetchHistory]);
+  }, []);
 
   const handleGenerate = useCallback(async ({ barcode, barcodeDate, barcodeShift, productionDate, shift: formShift, qty, operator, bahanSisa }) => {
     setResult(null);
@@ -369,14 +331,6 @@ function App() {
         onMouseEnter={handleSidebarEnter}
         onMouseLeave={handleSidebarLeave}
       >
-        <div className="sidebar-brand" title="Trace Barcode">
-          <div className="sidebar-logo"><i className="bi bi-upc-scan" /></div>
-          <div className="sidebar-brand-text">
-            <strong>Trace Barcode</strong>
-            <span>Aplikasi Produksi</span>
-          </div>
-        </div>
-
         <nav className="sidebar-nav">
           {NAV_ITEMS.filter((item) => item.show(user)).map((item) => (
             <button
@@ -429,6 +383,12 @@ function App() {
           <button className="menu-toggle" aria-label="Buka menu" onClick={() => setSidebarOpen(true)}>
             <i className="bi bi-list" />
           </button>
+          <div className="topbar-brand" title="Trace Barcode">
+            <span className="topbar-logo">
+              <img src={logo} alt="Trace Barcode" />
+            </span>
+          </div>
+          <span className="topbar-sep" />
           <span className="topbar-title">{VIEW_TITLES[view] || "Trace Barcode"}</span>
           <span className="topbar-date">{todayLabel}</span>
         </header>
@@ -460,11 +420,7 @@ function App() {
             )
           ) : view === "history" ? (
             <TransactionHistory
-              transactions={transactions}
-              loading={loadingHistory}
-              error={historyError}
               canEditDelete={canEditTransactions(user)}
-              onReload={fetchHistory}
               onBackToScan={canInput(user) ? () => setView("scan") : null}
             />
           ) : view === "users" ? (
