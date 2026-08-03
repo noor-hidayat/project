@@ -144,12 +144,17 @@ function App() {
   }, [user]);
 
   const handleLogin = useCallback((userObj) => {
+    setSidebarHover(false);
+    setUserMenuOpen(false);
+    setShowChangePassword(false);
     setUser(userObj);
     setView(defaultViewFor(userObj));
   }, []);
 
   const handleLogout = useCallback(() => {
+    setSidebarHover(false);
     setUserMenuOpen(false);
+    setShowChangePassword(false);
     setUser(null);
   }, []);
 
