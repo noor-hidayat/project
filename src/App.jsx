@@ -1,20 +1,77 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { parseBarcode, generateBarcodeRange, validateQty } from "./lib/barcodeParser";
 import { getTodayDDMMYY } from "./lib/dateUtils";
 import { supabase } from "./lib/supabaseClient";
 import ScanForm from "./components/ScanForm";
 import DailySummary from "./components/DailySummary";
 import TransactionHistory from "./components/TransactionHistory";
+import UserManagement from "./components/UserManagement";
 import LoginPage from "./components/LoginPage";
 import "./App.css";
 
 const STORAGE_KEY = "barcode_app_user";
 
+export const ROLE_LABELS = {
+  operator: "Operator",
+  admin: "Admin",
+  superadmin: "Superadmin",
+};
+
+export function canInput(user) {
+  return !!user && (user.role === "operator" || user.role === "superadmin");
+}
+
+export function canViewHistory(user) {
+  return !!user && (user.role === "operator" || user.role === "admin" || user.role === "superadmin");
+}
+
+export function canManageUsers(user) {
+  return !!user && user.role === "superadmin";
+}
+
+export function canEditTransactions(user) {
+  return !!user && (user.role === "admin" || user.role === "superadmin");
+}
+
+export function defaultViewFor(user) {
+  if (!user) return "scan";
+  if (user.role === "superadmin") return "users";
+  if (user.role === "admin") return "history";
+  return "scan";
+}
+
+const NAV_ITEMS = [
+  { view: "scan", label: "Scan Barcode", icon: "bi-upc-scan", show: canInput },
+  { view: "history", label: "Riwayat", icon: "bi-clock-history", show: canViewHistory },
+  { view: "summary", label: "Ringkasan", icon: "bi-bar-chart-line", show: canViewHistory },
+  { view: "users", label: "Kelola User", icon: "bi-people", show: canManageUsers },
+];
+
+const VIEW_TITLES = {
+  scan: "Scan Barcode",
+  history: "Riwayat Transaksi",
+  summary: "Ringkasan Harian",
+  users: "Kelola User",
+};
+
+function loadStoredUser() {
+  const raw = sessionStorage.getItem(STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === "string") {
+      return { username: parsed, role: null };
+    }
+    return parsed;
+  } catch {
+    return { username: raw, role: null };
+  }
+}
+
 function App() {
-  const [user, setUser] = useState(() => sessionStorage.getItem(STORAGE_KEY));
-  const [view, setView] = useState("scan");
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropRef = useRef(null);
+  const [user, setUser] = useState(loadStoredUser);
+  const [view, setView] = useState(() => defaultViewFor(loadStoredUser()));
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const [productCode, setProductCode] = useState("");
   const [result, setResult] = useState(null);
@@ -25,43 +82,31 @@ function App() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState("");
 
+  const todayLabel = new Date().toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
   useEffect(() => {
     if (user) {
-      sessionStorage.setItem(STORAGE_KEY, user);
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(user));
     } else {
       sessionStorage.removeItem(STORAGE_KEY);
     }
   }, [user]);
 
-  useEffect(() => {
-    if (!dropdownOpen) return;
-    const handler = (e) => {
-      if (dropRef.current && !dropRef.current.contains(e.target)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [dropdownOpen]);
-
-  const handleLogin = useCallback((username) => {
-    setUser(username);
+  const handleLogin = useCallback((userObj) => {
+    setUser(userObj);
+    setView(defaultViewFor(userObj));
   }, []);
 
   const handleLogout = useCallback(() => {
     setUser(null);
   }, []);
 
-  const handleNewTransaction = useCallback(() => {
-    setFormKey((k) => k + 1);
-    setProductCode("");
-    setResult(null);
-    setSaveError("");
-    setView("scan");
-  }, []);
-
-  const handleViewHistory = useCallback(async () => {
-    setView("history");
+  const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
     setHistoryError("");
 
@@ -94,9 +139,21 @@ function App() {
     setLoadingHistory(false);
   }, []);
 
-  const handleViewSummary = useCallback(() => {
-    setView("summary");
+  const handleNewTransaction = useCallback(() => {
+    setFormKey((k) => k + 1);
+    setProductCode("");
+    setResult(null);
+    setSaveError("");
+    setView("scan");
   }, []);
+
+  const goTo = useCallback((nextView) => {
+    setSidebarOpen(false);
+    if (nextView === "history") {
+      fetchHistory();
+    }
+    setView(nextView);
+  }, [fetchHistory]);
 
   const handleGenerate = useCallback(async ({ barcode, barcodeDate, barcodeShift, productionDate, shift: formShift, qty, operator, bahanSisa }) => {
     setResult(null);
@@ -191,7 +248,7 @@ function App() {
       shift: formShift,
       serial_number: bc.slice(-3),
       operator: operator || null,
-      admin_user: user,
+      admin_user: user.name || user.username,
       trx_code: trxCode,
       bahan_sisa: bahanSisa || false,
     }));
@@ -224,60 +281,92 @@ function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <h1>Trace Barcode</h1>
-        <nav className="app-nav">
-          <button className={"nav-btn" + (view === "scan" ? " active" : "")} onClick={() => setView("scan")}>Scan</button>
-          <button className={"nav-btn" + (view === "history" ? " active" : "")} onClick={handleViewHistory}>Riwayat</button>
-          <button className={"nav-btn" + (view === "summary" ? " active" : "")} onClick={handleViewSummary}>Ringkasan</button>
-        </nav>
-        <div className="user-dropdown" ref={dropRef}>
-          <div className="user-trigger" onClick={() => setDropdownOpen((v) => !v)}>
-            <div className="user-avatar">{user[0].toUpperCase()}</div>
-            <span className="user-name">{user}</span>
-            <i className={"bi bi-chevron-down user-chevron" + (dropdownOpen ? " open" : "")}/>
-          </div>
-          {dropdownOpen && (
-            <div className="dropdown-menu">
-              <div className="dropdown-header">
-                <div className="user-avatar large">{user[0].toUpperCase()}</div>
-                <div className="dropdown-user-info">
-                  <div className="dropdown-username">{user}</div>
-                  <div className="dropdown-role">User</div>
-                </div>
-              </div>
-              <div className="dropdown-divider"/>
-              <button className="dropdown-logout" onClick={handleLogout}>
-                <i className="bi bi-box-arrow-right me-2"/>Logout
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
+      {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
 
-      <main>
-        {view === "scan" ? (
-          <ScanForm
-            key={formKey}
-            generated={generated}
-            onGenerate={handleGenerate}
-            onSave={handleSave}
-            saving={saving}
-            saveError={saveError}
-            result={result}
-            onNewTransaction={handleNewTransaction}
-          />
-        ) : view === "history" ? (
-          <TransactionHistory
-            transactions={transactions}
-            loading={loadingHistory}
-            error={historyError}
-            onBackToScan={() => setView("scan")}
-          />
-        ) : (
-          <DailySummary />
-        )}
-      </main>
+      <aside className={"sidebar" + (sidebarOpen ? " open" : "")}>
+        <div className="sidebar-brand">
+          <div className="sidebar-logo"><i className="bi bi-upc-scan" /></div>
+          <div className="sidebar-brand-text">
+            <strong>Trace Barcode</strong>
+            <span>Aplikasi Produksi</span>
+          </div>
+        </div>
+
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.filter((item) => item.show(user)).map((item) => (
+            <button
+              key={item.view}
+              className={"sidebar-item" + (view === item.view ? " active" : "")}
+              onClick={() => goTo(item.view)}
+            >
+              <i className={"bi " + item.icon} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="sidebar-foot">
+          <div className="sidebar-user">
+            <div className="sidebar-avatar">{(user.name || user.username)[0].toUpperCase()}</div>
+            <div className="sidebar-user-info">
+              <span className="sidebar-user-name" title={user.name}>{user.name || user.username}</span>
+              <span className="sidebar-user-role">{ROLE_LABELS[user.role] || "Operator"}</span>
+            </div>
+            <button className="sidebar-logout" title="Logout" onClick={handleLogout}>
+              <i className="bi bi-box-arrow-right" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <div className="main-col">
+        <header className="topbar">
+          <button className="menu-toggle" aria-label="Buka menu" onClick={() => setSidebarOpen(true)}>
+            <i className="bi bi-list" />
+          </button>
+          <span className="topbar-title">{VIEW_TITLES[view] || "Trace Barcode"}</span>
+          <span className="topbar-date">{todayLabel}</span>
+        </header>
+
+        <main className="app-main">
+          {view === "scan" ? (
+            canInput(user) ? (
+              <ScanForm
+                key={formKey}
+                generated={generated}
+                onGenerate={handleGenerate}
+                onSave={handleSave}
+                saving={saving}
+                saveError={saveError}
+                result={result}
+                onNewTransaction={handleNewTransaction}
+              />
+            ) : (
+              <TransactionHistory
+                transactions={transactions}
+                loading={loadingHistory}
+                error={historyError}
+                canEditDelete={canEditTransactions(user)}
+                onReload={fetchHistory}
+                onBackToScan={null}
+              />
+            )
+          ) : view === "history" ? (
+            <TransactionHistory
+              transactions={transactions}
+              loading={loadingHistory}
+              error={historyError}
+              canEditDelete={canEditTransactions(user)}
+              onReload={fetchHistory}
+              onBackToScan={canInput(user) ? () => setView("scan") : null}
+            />
+          ) : view === "users" ? (
+            <UserManagement currentUser={user} />
+          ) : (
+            <DailySummary />
+          )}
+        </main>
+      </div>
     </div>
   );
 }

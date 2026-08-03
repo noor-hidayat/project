@@ -5,7 +5,7 @@ function fmtProdDate(d) {
   return d?.split("-").reverse().join("-") || "-";
 }
 
-export default function TransactionHistory({ transactions, loading, error, onBackToScan }) {
+export default function TransactionHistory({ transactions, loading, error, canEditDelete, onReload, onBackToScan }) {
   const [modalTrx, setModalTrx] = useState(null);
   const [modalProduct, setModalProduct] = useState("");
   const [modalCode, setModalCode] = useState("");
@@ -14,6 +14,13 @@ export default function TransactionHistory({ transactions, loading, error, onBac
   const [search, setSearch] = useState("");
   const [filterDate, setFilterDate] = useState("");
   const [filterShift, setFilterShift] = useState("");
+  const [editTrx, setEditTrx] = useState(null);
+  const [editForm, setEditForm] = useState({ shift: "", operator: "", production_date: "" });
+  const [editing, setEditing] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [deleteTrx, setDeleteTrx] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const shifts = useMemo(() => {
     return [...new Set(transactions.map((t) => t.shift))].filter(Boolean).sort();
@@ -76,6 +83,71 @@ export default function TransactionHistory({ transactions, loading, error, onBac
     setBarcodes([]);
   }
 
+  function openEdit(trx) {
+    setEditForm({
+      shift: trx.shift || "",
+      operator: trx.operator || "",
+      production_date: trx.production_date || "",
+    });
+    setEditError("");
+    setEditTrx(trx);
+  }
+
+  async function handleSaveEdit(e) {
+    e.preventDefault();
+    if (!editTrx) return;
+
+    const payload = {};
+    if (editForm.shift) payload.shift = editForm.shift;
+    if (editForm.operator !== undefined) payload.operator = editForm.operator;
+    if (editForm.production_date) payload.production_date = editForm.production_date;
+
+    if (Object.keys(payload).length === 0) {
+      setEditError("Tidak ada perubahan");
+      return;
+    }
+
+    setEditing(true);
+    setEditError("");
+
+    const { error: err } = await supabase
+      .from("scan_logs")
+      .update(payload)
+      .eq("trx_code", editTrx.trx_code);
+
+    setEditing(false);
+
+    if (err) {
+      setEditError("Gagal menyimpan: " + err.message);
+      return;
+    }
+
+    setEditTrx(null);
+    onReload();
+  }
+
+  async function handleDelete() {
+    if (!deleteTrx) return;
+
+    setDeleting(true);
+    setDeleteError("");
+
+    const { error: err } = await supabase
+      .from("scan_logs")
+      .delete()
+      .eq("trx_code", deleteTrx.trx_code);
+
+    setDeleting(false);
+
+    if (err) {
+      setDeleteError("Gagal menghapus: " + err.message);
+      return;
+    }
+
+    setDeleteTrx(null);
+    onReload();
+  }
+
   if (loading) {
     return <div className="status status-loading">Memuat riwayat transaksi...</div>;
   }
@@ -88,7 +160,7 @@ export default function TransactionHistory({ transactions, loading, error, onBac
     return (
       <div className="history-empty">
         <p>Belum ada transaksi.</p>
-        <button className="btn btn-primary" onClick={onBackToScan}>Scan Barcode</button>
+        {onBackToScan && <button className="btn btn-primary" onClick={onBackToScan}>Scan Barcode</button>}
       </div>
     );
   }
@@ -192,13 +264,33 @@ export default function TransactionHistory({ transactions, loading, error, onBac
                   <td>{t.operator || "-"}</td>
                   <td className="cell-product" title={t.admin_user || "-"}>{t.admin_user || "-"}</td>
                   <td>
-                    <button
-                      className="btn-expand"
-                      title="Lihat detail"
-                      onClick={() => openModal(t.trx_code, t.product_name || t.product_code, t.trx_code)}
-                    >
-                      <i className="bi bi-eye" />
-                    </button>
+                    <div className="d-flex align-items-center gap-1">
+                      <button
+                        className="btn-expand"
+                        title="Lihat detail"
+                        onClick={() => openModal(t.trx_code, t.product_name || t.product_code, t.trx_code)}
+                      >
+                        <i className="bi bi-eye" />
+                      </button>
+                      {canEditDelete && (
+                        <>
+                          <button
+                            className="btn-expand btn-expand-edit"
+                            title="Edit transaksi"
+                            onClick={() => openEdit(t)}
+                          >
+                            <i className="bi bi-pencil" />
+                          </button>
+                          <button
+                            className="btn-expand btn-expand-delete"
+                            title="Hapus transaksi"
+                            onClick={() => setDeleteTrx(t)}
+                          >
+                            <i className="bi bi-trash" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -240,6 +332,139 @@ export default function TransactionHistory({ transactions, loading, error, onBac
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editTrx && (
+        <div className="modal-overlay" onClick={() => !editing && setEditTrx(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Transaksi</h3>
+              <button className="modal-close" onClick={() => !editing && setEditTrx(null)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-info">
+                <div className="modal-info-row">
+                  <span className="modal-info-label">Kode Transaksi</span>
+                  <strong className="modal-info-value cell-mono">{editTrx.trx_code}</strong>
+                </div>
+                <div className="modal-info-row">
+                  <span className="modal-info-label">Produk</span>
+                  <span className="modal-info-value">{editTrx.product_name || editTrx.product_code}</span>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveEdit}>
+                <div className="mb-3">
+                  <label className="form-label" htmlFor="editShift">Shift</label>
+                  <select
+                    id="editShift"
+                    className="form-select form-select-sm"
+                    value={editForm.shift}
+                    onChange={(e) => setEditForm({ ...editForm, shift: e.target.value })}
+                  >
+                    <option value="">Pilih Shift</option>
+                    <option value="01">Shift 1</option>
+                    <option value="02">Shift 2</option>
+                  </select>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label" htmlFor="editOperator">Operator</label>
+                  <input
+                    id="editOperator"
+                    className="form-control form-control-sm"
+                    type="text"
+                    value={editForm.operator}
+                    onChange={(e) => setEditForm({ ...editForm, operator: e.target.value })}
+                    placeholder="Nama operator"
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label" htmlFor="editProdDate">Tanggal Produksi</label>
+                  <input
+                    id="editProdDate"
+                    className="form-control form-control-sm"
+                    type="date"
+                    value={editForm.production_date}
+                    onChange={(e) => setEditForm({ ...editForm, production_date: e.target.value })}
+                  />
+                </div>
+
+                {editError && <div className="alert alert-danger py-2">{editError}</div>}
+
+                <div className="d-flex justify-content-end gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => setEditTrx(null)}
+                    disabled={editing}
+                  >
+                    Batal
+                  </button>
+                  <button type="submit" className="btn btn-sm btn-primary" disabled={editing}>
+                    <i className={"bi " + (editing ? "bi-hourglass-split" : "bi-check-lg") + " me-1"}/>
+                    {editing ? "Menyimpan..." : "Simpan"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTrx && (
+        <div className="modal-overlay" onClick={() => !deleting && setDeleteTrx(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Hapus Transaksi</h3>
+              <button className="modal-close" onClick={() => !deleting && setDeleteTrx(null)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-info">
+                <div className="modal-info-row">
+                  <span className="modal-info-label">Kode Transaksi</span>
+                  <strong className="modal-info-value cell-mono">{deleteTrx.trx_code}</strong>
+                </div>
+                <div className="modal-info-row">
+                  <span className="modal-info-label">Produk</span>
+                  <span className="modal-info-value">{deleteTrx.product_name || deleteTrx.product_code}</span>
+                </div>
+                <div className="modal-info-row">
+                  <span className="modal-info-label">Jumlah</span>
+                  <span className="modal-info-value">{deleteTrx.qty} barcode</span>
+                </div>
+              </div>
+
+              <div className="alert alert-danger py-2">
+                <i className="bi bi-exclamation-triangle me-1"/>
+                Seluruh {deleteTrx.qty} barcode transaksi ini akan dihapus permanen. Lanjutkan?
+              </div>
+
+              {deleteError && <div className="alert alert-danger py-2">{deleteError}</div>}
+
+              <div className="d-flex justify-content-end gap-2">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={() => setDeleteTrx(null)}
+                  disabled={deleting}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  <i className={"bi " + (deleting ? "bi-hourglass-split" : "bi-trash") + " me-1"}/>
+                  {deleting ? "Menghapus..." : "Hapus"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

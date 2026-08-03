@@ -14,6 +14,7 @@ async function hashPassword(password) {
 
 export default function LoginPage({ onLogin }) {
   const [mode, setMode] = useState("login");
+  const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
@@ -25,6 +26,20 @@ export default function LoginPage({ onLogin }) {
     setError("");
   }
 
+  async function fetchUser(usernameValue, hash) {
+    const columns = ["username, name, role", "username, name", "username"];
+    for (const cols of columns) {
+      const { data, error } = await supabase
+        .from("app_users")
+        .select(cols)
+        .eq("username", usernameValue)
+        .eq("password_hash", hash)
+        .maybeSingle();
+      if (!error) return data;
+    }
+    return null;
+  }
+
   async function handleLogin(e) {
     e.preventDefault();
     setError("");
@@ -32,15 +47,10 @@ export default function LoginPage({ onLogin }) {
 
     try {
       const hash = await hashPassword(password);
-      const { data } = await supabase
-        .from("app_users")
-        .select("username")
-        .eq("username", username.trim())
-        .eq("password_hash", hash)
-        .maybeSingle();
+      const data = await fetchUser(username.trim(), hash);
 
       if (data) {
-        onLogin(username.trim());
+        onLogin({ username: data.username, name: data.name || data.username, role: data.role || "operator" });
       } else {
         setError("Username atau password salah");
       }
@@ -57,6 +67,11 @@ export default function LoginPage({ onLogin }) {
 
     if (token !== REGISTER_TOKEN) {
       setError("Token registrasi salah");
+      return;
+    }
+
+    if (!name.trim()) {
+      setError("Nama harus diisi");
       return;
     }
 
@@ -77,7 +92,12 @@ export default function LoginPage({ onLogin }) {
 
       const { error: insertError } = await supabase
         .from("app_users")
-        .insert({ username: username.trim(), password_hash: hash });
+        .insert({
+          name: name.trim(),
+          username: username.trim(),
+          password_hash: hash,
+          role: "operator",
+        });
 
       if (insertError) {
         if (insertError.message.includes("duplicate")) {
@@ -89,7 +109,7 @@ export default function LoginPage({ onLogin }) {
         return;
       }
 
-      onLogin(username.trim());
+      onLogin({ username: username.trim(), name: name.trim(), role: "operator" });
     } catch {
       setError("Gagal terhubung ke database");
     }
@@ -163,6 +183,23 @@ export default function LoginPage({ onLogin }) {
               <p className="text-muted">Daftar akun baru</p>
 
               <div className="mb-3">
+                <label className="form-label" htmlFor="regName">Nama</label>
+                <div className="input-group">
+                  <span className="input-group-text"><i className="bi bi-person-badge"/></span>
+                  <input
+                    id="regName"
+                    className="form-control"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Nama lengkap"
+                    autoComplete="off"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <div className="mb-3">
                 <label className="form-label" htmlFor="regUser">Username Baru</label>
                 <div className="input-group">
                   <span className="input-group-text"><i className="bi bi-person"/></span>
@@ -209,6 +246,10 @@ export default function LoginPage({ onLogin }) {
                   />
                 </div>
                 <div className="form-text">Hubungi atasan untuk mendapatkan token</div>
+              </div>
+
+              <div className="alert alert-secondary py-2 small mb-3">
+                Akun baru terdaftar sebagai <strong>Operator</strong>. Role dapat diubah oleh Superadmin.
               </div>
 
               {error && <div className="alert alert-danger">{error}</div>}
