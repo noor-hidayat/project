@@ -1,28 +1,35 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { parseBarcode, generateBarcodeRange, validateQty } from "./lib/barcodeParser";
 import { getTodayDDMMYY } from "./lib/dateUtils";
 import { supabase } from "./lib/supabaseClient";
+import { addAuditLog } from "./lib/auditLog";
 import ScanForm from "./components/ScanForm";
 import DailySummary from "./components/DailySummary";
 import TransactionHistory from "./components/TransactionHistory";
 import UserManagement from "./components/UserManagement";
+import AuditLog from "./components/AuditLog";
 import LoginPage from "./components/LoginPage";
+import ChangePasswordModal from "./components/ChangePasswordModal";
 import "./App.css";
 
 const STORAGE_KEY = "barcode_app_user";
 
+const SUPERVISOR_ROLES = ["spv", "foreman", "leader"];
+
 export const ROLE_LABELS = {
-  operator: "Operator",
   admin: "Admin",
-  superadmin: "Superadmin",
+  spv: "SPV",
+  foreman: "Foreman",
+  leader: "Leader",
+  superadmin: "Administrator",
 };
 
 export function canInput(user) {
-  return !!user && (user.role === "operator" || user.role === "superadmin");
+  return !!user && (user.role === "admin" || user.role === "superadmin");
 }
 
 export function canViewHistory(user) {
-  return !!user && (user.role === "operator" || user.role === "admin" || user.role === "superadmin");
+  return !!user && (user.role === "admin" || SUPERVISOR_ROLES.includes(user.role) || user.role === "superadmin");
 }
 
 export function canManageUsers(user) {
@@ -30,21 +37,26 @@ export function canManageUsers(user) {
 }
 
 export function canEditTransactions(user) {
-  return !!user && (user.role === "admin" || user.role === "superadmin");
+  return !!user && (SUPERVISOR_ROLES.includes(user.role) || user.role === "superadmin");
+}
+
+export function canViewLogs(user) {
+  return !!user && user.role === "superadmin";
 }
 
 export function defaultViewFor(user) {
   if (!user) return "scan";
   if (user.role === "superadmin") return "users";
-  if (user.role === "admin") return "history";
+  if (SUPERVISOR_ROLES.includes(user.role)) return "history";
   return "scan";
 }
 
 const NAV_ITEMS = [
-  { view: "scan", label: "Scan Barcode", icon: "bi-upc-scan", show: canInput },
+  { view: "scan", label: "Scan Barcode", icon: "bi-upc-scan", show: (u) => canInput(u) || SUPERVISOR_ROLES.includes(u?.role) },
   { view: "history", label: "Riwayat", icon: "bi-clock-history", show: canViewHistory },
   { view: "summary", label: "Ringkasan", icon: "bi-bar-chart-line", show: canViewHistory },
   { view: "users", label: "Kelola User", icon: "bi-people", show: canManageUsers },
+  { view: "log", label: "Log Aktivitas", icon: "bi-journal-text", show: canViewLogs },
 ];
 
 const VIEW_TITLES = {
@@ -52,6 +64,7 @@ const VIEW_TITLES = {
   history: "Riwayat Transaksi",
   summary: "Ringkasan Harian",
   users: "Kelola User",
+  log: "Log Aktivitas",
 };
 
 function loadStoredUser() {
@@ -72,6 +85,39 @@ function App() {
   const [user, setUser] = useState(loadStoredUser);
   const [view, setView] = useState(() => defaultViewFor(loadStoredUser()));
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarHover, setSidebarHover] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const hoverTimer = useRef(null);
+  const userMenuRef = useRef(null);
+  const sidebarRef = useRef(null);
+
+  const handleSidebarEnter = useCallback(() => {
+    clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setSidebarHover(true), 30);
+  }, []);
+
+  const handleSidebarLeave = useCallback(() => {
+    if (showChangePassword) return;
+    clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => {
+      setSidebarHover(false);
+      setUserMenuOpen(false);
+    }, 100);
+  }, [showChangePassword]);
+
+  useEffect(() => {
+    if (showChangePassword) return;
+    const t = setTimeout(() => {
+      if (sidebarRef.current && !sidebarRef.current.matches(":hover")) {
+        setSidebarHover(false);
+      }
+    }, 100);
+    return () => clearTimeout(t);
+  }, [showChangePassword]);
+
+  useEffect(() => () => clearTimeout(hoverTimer.current), []);
+
   const [formKey, setFormKey] = useState(0);
   const [productCode, setProductCode] = useState("");
   const [result, setResult] = useState(null);
@@ -103,8 +149,30 @@ function App() {
   }, []);
 
   const handleLogout = useCallback(() => {
+    setUserMenuOpen(false);
     setUser(null);
   }, []);
+
+  const handleUserClick = useCallback(() => {
+    if (sidebarHover) {
+      setUserMenuOpen((o) => !o);
+    } else {
+      setSidebarHover(true);
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = setTimeout(() => setUserMenuOpen(true), 250);
+    }
+  }, [sidebarHover]);
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const onDocClick = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, [userMenuOpen]);
 
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -273,6 +341,12 @@ function App() {
       trxCode,
     });
     setGenerated(null);
+
+    addAuditLog({
+      username: user?.username || user?.name,
+      action: "transaction_input",
+      detail: `${trxCode} · ${productName || productCode} · ${range.length} barcode`,
+    });
   }, [generated, user]);
 
   if (!user) {
@@ -280,11 +354,17 @@ function App() {
   }
 
   return (
-    <div className="app">
+    <>
+      <div className="app">
       {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
 
-      <aside className={"sidebar" + (sidebarOpen ? " open" : "")}>
-        <div className="sidebar-brand">
+      <aside
+        ref={sidebarRef}
+        className={"sidebar" + (sidebarOpen ? " open" : "") + (sidebarHover ? "" : " collapsed")}
+        onMouseEnter={handleSidebarEnter}
+        onMouseLeave={handleSidebarLeave}
+      >
+        <div className="sidebar-brand" title="Trace Barcode">
           <div className="sidebar-logo"><i className="bi bi-upc-scan" /></div>
           <div className="sidebar-brand-text">
             <strong>Trace Barcode</strong>
@@ -297,6 +377,7 @@ function App() {
             <button
               key={item.view}
               className={"sidebar-item" + (view === item.view ? " active" : "")}
+              title={item.label}
               onClick={() => goTo(item.view)}
             >
               <i className={"bi " + item.icon} />
@@ -306,15 +387,34 @@ function App() {
         </nav>
 
         <div className="sidebar-foot">
-          <div className="sidebar-user">
-            <div className="sidebar-avatar">{(user.name || user.username)[0].toUpperCase()}</div>
-            <div className="sidebar-user-info">
-              <span className="sidebar-user-name" title={user.name}>{user.name || user.username}</span>
-              <span className="sidebar-user-role">{ROLE_LABELS[user.role] || "Operator"}</span>
-            </div>
-            <button className="sidebar-logout" title="Logout" onClick={handleLogout}>
-              <i className="bi bi-box-arrow-right" />
+          <div className="sidebar-user-wrap" ref={userMenuRef}>
+            <button className="sidebar-user" title="Menu pengguna" onClick={handleUserClick}>
+              <div className="sidebar-avatar">{(user.name || user.username)[0].toUpperCase()}</div>
+              <div className="sidebar-user-info">
+                <span className="sidebar-user-name" title={user.name}>{user.name || user.username}</span>
+                <span className="sidebar-user-role">{ROLE_LABELS[user.role] || ROLE_LABELS.admin}</span>
+              </div>
+              <i className="bi bi-chevron-up sidebar-user-caret" />
             </button>
+            {userMenuOpen && (
+              <div className="sidebar-user-menu">
+                <button
+                  className="sidebar-menu-item"
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    setShowChangePassword(true);
+                  }}
+                >
+                  <i className="bi bi-key" />
+                  <span>Ganti Password</span>
+                </button>
+                <div className="sidebar-menu-divider" />
+                <button className="sidebar-menu-item danger" onClick={handleLogout}>
+                  <i className="bi bi-box-arrow-right" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </aside>
@@ -342,14 +442,16 @@ function App() {
                 onNewTransaction={handleNewTransaction}
               />
             ) : (
-              <TransactionHistory
-                transactions={transactions}
-                loading={loadingHistory}
-                error={historyError}
-                canEditDelete={canEditTransactions(user)}
-                onReload={fetchHistory}
-                onBackToScan={null}
-              />
+              <div className="card access-locked">
+                <div className="card-body">
+                  <div className="access-locked-icon"><i className="bi bi-shield-lock" /></div>
+                  <h2>Input Barcode Terkunci</h2>
+                  <p>
+                    Peran Anda tidak diizinkan melakukan input barcode.
+                    Gunakan menu <strong>Riwayat</strong> untuk melihat, mengedit, atau menghapus transaksi.
+                  </p>
+                </div>
+              </div>
             )
           ) : view === "history" ? (
             <TransactionHistory
@@ -362,12 +464,18 @@ function App() {
             />
           ) : view === "users" ? (
             <UserManagement currentUser={user} />
+          ) : view === "log" ? (
+            <AuditLog />
           ) : (
             <DailySummary />
           )}
         </main>
       </div>
-    </div>
+      </div>
+      {showChangePassword && (
+        <ChangePasswordModal user={user} onClose={() => setShowChangePassword(false)} />
+      )}
+    </>
   );
 }
 

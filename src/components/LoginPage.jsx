@@ -1,16 +1,9 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { addAuditLog } from "../lib/auditLog";
+import { hashPassword } from "../lib/passwordUtils";
 
 const REGISTER_TOKEN = "8522";
-
-async function hashPassword(password) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 export default function LoginPage({ onLogin }) {
   const [mode, setMode] = useState("login");
@@ -50,7 +43,7 @@ export default function LoginPage({ onLogin }) {
       const data = await fetchUser(username.trim(), hash);
 
       if (data) {
-        onLogin({ username: data.username, name: data.name || data.username, role: data.role || "operator" });
+        onLogin({ username: data.username, name: data.name || data.username, role: data.role || "admin" });
       } else {
         setError("Username atau password salah");
       }
@@ -96,7 +89,7 @@ export default function LoginPage({ onLogin }) {
           name: name.trim(),
           username: username.trim(),
           password_hash: hash,
-          role: "operator",
+          role: "admin",
         });
 
       if (insertError) {
@@ -109,7 +102,8 @@ export default function LoginPage({ onLogin }) {
         return;
       }
 
-      onLogin({ username: username.trim(), name: name.trim(), role: "operator" });
+      onLogin({ username: username.trim(), name: name.trim(), role: "admin" });
+      addAuditLog({ username: username.trim(), action: "register", detail: "Mendaftarkan akun baru" });
     } catch {
       setError("Gagal terhubung ke database");
     }
@@ -249,7 +243,7 @@ export default function LoginPage({ onLogin }) {
               </div>
 
               <div className="alert alert-secondary py-2 small mb-3">
-                Akun baru terdaftar sebagai <strong>Operator</strong>. Role dapat diubah oleh Superadmin.
+                Akun baru terdaftar sebagai <strong>Admin</strong> (input barcode). Role dapat diubah oleh Administrator.
               </div>
 
               {error && <div className="alert alert-danger">{error}</div>}

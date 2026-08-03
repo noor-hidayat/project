@@ -1,25 +1,36 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { addAuditLog } from "../lib/auditLog";
 
 const ROLE_META = {
-  operator: {
-    label: "Operator",
-    icon: "bi-person-badge",
-    desc: "Input barcode, lihat riwayat & ringkasan",
-  },
   admin: {
     label: "Admin",
-    icon: "bi-shield-check",
-    desc: "Akses transaksi, edit & hapus",
+    icon: "bi-upc-scan",
+    desc: "Input barcode & lihat riwayat",
+  },
+  spv: {
+    label: "SPV",
+    icon: "bi-clipboard-check",
+    desc: "Edit & hapus transaksi",
+  },
+  foreman: {
+    label: "Foreman",
+    icon: "bi-clipboard-data",
+    desc: "Edit & hapus transaksi",
+  },
+  leader: {
+    label: "Leader",
+    icon: "bi-person-check",
+    desc: "Edit & hapus transaksi",
   },
   superadmin: {
-    label: "Superadmin",
+    label: "Administrator",
     icon: "bi-star-fill",
-    desc: "Kelola user & sistem",
+    desc: "Kelola user & lihat log aktivitas",
   },
 };
 
-const STAT_ORDER = ["operator", "admin", "superadmin"];
+const STAT_ORDER = ["admin", "spv", "foreman", "leader", "superadmin"];
 
 function fmtDate(iso) {
   if (!iso) return "-";
@@ -39,9 +50,9 @@ export default function UserManagement({ currentUser }) {
   const savedTimer = useRef(null);
 
   const stats = useMemo(() => {
-    const counts = { operator: 0, admin: 0, superadmin: 0 };
+    const counts = { admin: 0, spv: 0, foreman: 0, leader: 0, superadmin: 0 };
     for (const u of users) {
-      const r = u.role || "operator";
+      const r = u.role || "admin";
       if (r in counts) counts[r]++;
     }
     return { total: users.length, ...counts };
@@ -72,7 +83,7 @@ export default function UserManagement({ currentUser }) {
     return () => clearTimeout(savedTimer.current);
   }, [loadUsers]);
 
-  async function handleRoleChange(userId, newRole) {
+  async function handleRoleChange(userId, oldRole, newRole, username) {
     setSavingId(userId);
     setSavedId(null);
 
@@ -91,6 +102,12 @@ export default function UserManagement({ currentUser }) {
     setSavedId(userId);
     clearTimeout(savedTimer.current);
     savedTimer.current = setTimeout(() => setSavedId(null), 2000);
+
+    addAuditLog({
+      username: currentUser?.username,
+      action: "role_change",
+      detail: `${username || userId}: ${oldRole} → ${newRole}`,
+    });
 
     await loadUsers({ quiet: true });
   }
@@ -169,7 +186,7 @@ export default function UserManagement({ currentUser }) {
           </div>
         ) : (
           users.map((u) => {
-            const role = u.role || "operator";
+            const role = u.role in ROLE_META ? u.role : "admin";
             const meta = ROLE_META[role];
             const isSelf = currentUser && currentUser.username === u.username;
             const saving = savingId === u.id;
@@ -200,7 +217,7 @@ export default function UserManagement({ currentUser }) {
                       value={role}
                       disabled={isSelf || saving}
                       title={isSelf ? "Role sendiri tidak dapat diubah" : "Ubah peran " + (u.name || u.username)}
-                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                      onChange={(e) => handleRoleChange(u.id, role, e.target.value, u.username)}
                     >
                       {Object.keys(ROLE_META).map((r) => (
                         <option key={r} value={r}>{ROLE_META[r].label}</option>
@@ -222,7 +239,7 @@ export default function UserManagement({ currentUser }) {
       {users.length > 0 && (
         <p className="users-hint">
           <i className="bi bi-info-circle" />
-          Peran Anda sendiri tidak dapat diubah dari halaman ini.
+          Peran Anda sendiri tidak dapat diubah dari halaman ini. Perubahan role dicatat di Log Aktivitas.
         </p>
       )}
     </div>

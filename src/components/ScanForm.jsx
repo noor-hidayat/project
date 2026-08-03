@@ -299,14 +299,18 @@ export default function ScanForm({
             <p className="mb-1"><strong>Tanggal Produksi:</strong> {fmtProdDate(result.productionDate)}</p>
             <p className="mb-1"><strong>Jumlah:</strong> {result.count} barcode dibuat</p>
 
-            <details className="mt-2">
-              <summary style={{ cursor: "pointer", fontSize: "0.82rem" }}>Lihat daftar {result.count} barcode</summary>
-              <div className="barcode-list mt-2" style={{ maxHeight: "220px", overflowY: "auto" }}>
-                {result.barcodes.map((bc, i) => (
-                  <code key={i}>{bc}</code>
-                ))}
-              </div>
-            </details>
+            <div className="barcode-list-title">
+              <i className="bi bi-upc-scan" />
+              <span>Daftar {result.count} Barcode</span>
+            </div>
+            <div className="barcode-grid">
+              {result.barcodes.map((bc, i) => (
+                <div className="barcode-chip" key={i}>
+                  <span className="barcode-chip-sn">{i + 1}</span>
+                  <code>{bc}</code>
+                </div>
+              ))}
+            </div>
 
             <button className="btn btn-success w-100 mt-3" onClick={onNewTransaction}>
               <i className="bi bi-plus-circle me-2"/>Input Transaksi Baru
@@ -326,14 +330,18 @@ export default function ScanForm({
             <p className="mb-1"><strong>Jumlah:</strong> {generated.range.length} barcode</p>
             {generated.operator && <p className="mb-1"><strong>Operator:</strong> {generated.operator}</p>}
 
-            <details className="mt-2">
-              <summary style={{ cursor: "pointer", fontSize: "0.82rem" }}>Lihat daftar {generated.range.length} barcode</summary>
-              <div className="barcode-list mt-2" style={{ maxHeight: "220px", overflowY: "auto" }}>
-                {generated.range.map((bc, i) => (
-                  <code key={i}>{bc}</code>
-                ))}
-              </div>
-            </details>
+            <div className="barcode-list-title">
+              <i className="bi bi-upc-scan" />
+              <span>Daftar {generated.range.length} Barcode</span>
+            </div>
+            <div className="barcode-grid">
+              {generated.range.map((bc, i) => (
+                <div className="barcode-chip" key={i}>
+                  <span className="barcode-chip-sn">{i + 1}</span>
+                  <code>{bc}</code>
+                </div>
+              ))}
+            </div>
 
             <div className="d-grid mt-3">
               <button className="btn btn-primary" onClick={onSave} disabled={saving}>

@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { addAuditLog } from "../lib/auditLog";
 
 function fmtProdDate(d) {
   return d?.split("-").reverse().join("-") || "-";
@@ -21,6 +22,13 @@ export default function TransactionHistory({ transactions, loading, error, canEd
   const [deleteTrx, setDeleteTrx] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [actor] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("barcode_app_user") || "null");
+    } catch {
+      return null;
+    }
+  });
 
   const shifts = useMemo(() => {
     return [...new Set(transactions.map((t) => t.shift))].filter(Boolean).sort();
@@ -124,6 +132,11 @@ export default function TransactionHistory({ transactions, loading, error, canEd
 
     setEditTrx(null);
     onReload();
+    addAuditLog({
+      username: actor?.username,
+      action: "transaction_edit",
+      detail: `${editTrx.trx_code} · shift/operator/tanggal diubah`,
+    });
   }
 
   async function handleDelete() {
@@ -146,6 +159,11 @@ export default function TransactionHistory({ transactions, loading, error, canEd
 
     setDeleteTrx(null);
     onReload();
+    addAuditLog({
+      username: actor?.username,
+      action: "transaction_delete",
+      detail: `${deleteTrx.trx_code} · ${deleteTrx.qty} barcode dihapus`,
+    });
   }
 
   if (loading) {
