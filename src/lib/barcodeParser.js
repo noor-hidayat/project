@@ -1,14 +1,14 @@
-const BARCODE_PATTERN = /^\d{3}(.{7})\d(\d{6})(\d{2})\w{3}-(\d{3})$/;
+const BARCODE_PATTERN = /^\d{3}(.{7})(\d)(\d{6})(\d{2})\w{3}-(\d{3})$/;
 
 export function parseBarcode(barcode) {
   const match = barcode.trim().match(BARCODE_PATTERN);
   if (!match) return null;
 
   return {
-    productCode: match[1],
-    productionDate: match[2],
-    shift: match[3],
-    serialNumber: match[4],
+    productCode: match[1] + "-" + match[2],
+    productionDate: match[3],
+    shift: match[4],
+    serialNumber: match[5],
     prefix: barcode.slice(0, -3),
   };
 }
