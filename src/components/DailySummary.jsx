@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "../lib/supabaseClient";
+import { parseBarcode } from "../lib/barcodeParser";
 import { getTodayDDMMYY, ddmmyyToDDMMYYYY, ddmmyyToDateValue } from "../lib/dateUtils";
 
 function ddmmyyFromDateValue(dateVal) {
@@ -79,10 +80,11 @@ export default function DailySummary() {
 
         const prodMap = {};
         for (const row of rows || []) {
-          const key = row.product_code;
+          const parsed = row.barcode ? parseBarcode(row.barcode) : null;
+          const key = (parsed && parsed.productCode) || row.product_code;
           if (!prodMap[key]) {
             prodMap[key] = {
-              productCode: row.product_code,
+              productCode: key,
               productName: row.product_name || "(tanpa nama)",
               shifts: {
                 "01": { count: 0, sisa: 0, sisaBarcodes: [] },
