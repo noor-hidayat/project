@@ -145,10 +145,6 @@ export default function ScanForm({
       setError("No. SPK wajib diisi");
       return;
     }
-    if (!/^\d{4}$/.test(spkVal)) {
-      setError("No. SPK harus 4 digit angka (contoh: 1234)");
-      return;
-    }
 
     onGenerate({
       barcode: barcode.trim(),
@@ -292,14 +288,12 @@ export default function ScanForm({
                 type="text"
                 value={spk}
                 onChange={(e) => setSpk(e.target.value)}
-                placeholder="4 digit angka"
+                placeholder="Nomor Surat Perintah Kerja"
                 autoComplete="off"
                 spellCheck={false}
                 required
-                pattern="[0-9]{4}"
-                maxLength={4}
               />
-              <div className="form-text">cth: 1234 — harus 4 digit angka</div>
+              <div className="form-text">cth: SPK-2026-0001</div>
             </div>
           </div>
 
