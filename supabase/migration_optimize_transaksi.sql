@@ -15,6 +15,7 @@ SELECT
   MAX(production_date) AS production_date,
   MAX(shift)           AS shift,
   MAX(operator)        AS operator,
+  MAX(spk)             AS spk,
   MAX(admin_user)      AS admin_user,
   MAX(created_at)      AS created_at,
   COUNT(*)             AS qty

@@ -25,7 +25,7 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
   const [filterDate, setFilterDate] = useState("");
   const [filterShift, setFilterShift] = useState("");
   const [editTrx, setEditTrx] = useState(null);
-  const [editForm, setEditForm] = useState({ shift: "", operator: "", production_date: "", bahan_sisa: false });
+  const [editForm, setEditForm] = useState({ shift: "", operator: "", spk: "", production_date: "", bahan_sisa: false });
   const [editing, setEditing] = useState(false);
   const [editError, setEditError] = useState("");
   const [deleteTrx, setDeleteTrx] = useState(null);
@@ -61,6 +61,7 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
         `product_code.ilike.%${q}%`,
         `trx_code.ilike.%${q}%`,
         `operator.ilike.%${q}%`,
+        `spk.ilike.%${q}%`,
         `admin_user.ilike.%${q}%`,
       ].join(","));
     }
@@ -164,6 +165,7 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
     setEditForm({
       shift: trx.shift || "",
       operator: trx.operator || "",
+      spk: trx.spk || "",
       production_date: trx.production_date || "",
       bahan_sisa: curBahanSisa,
     });
@@ -186,6 +188,10 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
     if (editForm.operator !== undefined && editForm.operator !== (editTrx.operator || "")) {
       payload.operator = editForm.operator;
       changes.push(`operator: ${editTrx.operator || "-"} → ${editForm.operator || "-"}`);
+    }
+    if (editForm.spk !== undefined && editForm.spk !== (editTrx.spk || "")) {
+      payload.spk = editForm.spk;
+      changes.push(`no. SPK: ${editTrx.spk || "-"} → ${editForm.spk || "-"}`);
     }
     if (editForm.production_date && editForm.production_date !== editTrx.production_date) {
       payload.production_date = editForm.production_date;
@@ -353,6 +359,7 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
               <th>Shift</th>
               <th>Jumlah</th>
               <th>Operator</th>
+              <th>No. SPK</th>
               <th>Diinput Oleh</th>
               <th>Detail</th>
             </tr>
@@ -360,7 +367,7 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
           <tbody>
             {transactions.length === 0 ? (
               <tr>
-                <td colSpan={8} className="history-no-result">Tidak ada data yang cocok dengan filter.</td>
+                <td colSpan={9} className="history-no-result">Tidak ada data yang cocok dengan filter.</td>
               </tr>
             ) : (
               transactions.map((t) => (
@@ -371,6 +378,7 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
                   <td>{t.shift}</td>
                   <td className="cell-num">{t.qty}</td>
                   <td>{t.operator || "-"}</td>
+                  <td className="cell-product" title={t.spk || "-"}>{t.spk || "-"}</td>
                   <td className="cell-product" title={t.admin_user || "-"}>{t.admin_user || "-"}</td>
                   <td>
                     <div className="row-actions">
@@ -562,6 +570,20 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
                     value={editForm.operator}
                     onChange={(e) => setEditForm({ ...editForm, operator: e.target.value })}
                     placeholder="Nama operator"
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label" htmlFor="editSpk">No. SPK</label>
+                  <input
+                    id="editSpk"
+                    className="form-control form-control-sm"
+                    type="text"
+                    value={editForm.spk}
+                    onChange={(e) => setEditForm({ ...editForm, spk: e.target.value })}
+                    placeholder="Nomor Surat Perintah Kerja"
+                    autoComplete="off"
+                    spellCheck={false}
                   />
                 </div>
 

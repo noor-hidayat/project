@@ -16,6 +16,7 @@ CREATE TABLE scan_logs (
   shift TEXT NOT NULL,
   serial_number TEXT NOT NULL,
   operator TEXT,
+  spk TEXT,
   admin_user TEXT,
   trx_code TEXT
 );

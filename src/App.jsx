@@ -194,7 +194,7 @@ function App() {
     setView(nextView);
   }, []);
 
-  const handleGenerate = useCallback(async ({ barcode, barcodeDate, barcodeShift, productionDate, shift: formShift, qty, operator, bahanSisa }) => {
+  const handleGenerate = useCallback(async ({ barcode, barcodeDate, barcodeShift, productionDate, shift: formShift, qty, operator, spk, bahanSisa }) => {
     setResult(null);
     setSaveError("");
     setGenerated(null);
@@ -258,6 +258,7 @@ function App() {
       shift: shiftMapped,
       qty,
       operator,
+      spk,
       productCode: parsed.productCode,
       productName,
       range,
@@ -274,7 +275,7 @@ function App() {
 
     const {
       barcodeDate, barcodeShift, productionDate,
-      shift: formShift, operator, productCode, productName, range, trxCode, bahanSisa,
+      shift: formShift, operator, spk, productCode, productName, range, trxCode, bahanSisa,
     } = generated;
 
     const rows = range.map((bc) => ({
@@ -287,6 +288,7 @@ function App() {
       shift: formShift,
       serial_number: bc.slice(-3),
       operator: operator || null,
+      spk: spk || null,
       admin_user: user.name || user.username,
       trx_code: trxCode,
       bahan_sisa: bahanSisa || false,
@@ -310,6 +312,7 @@ function App() {
       count: range.length,
       barcodes: range,
       trxCode,
+      spk,
     });
     setGenerated(null);
 

@@ -29,6 +29,7 @@ export default function ScanForm({
   const [shift, setShift] = useState("");
   const [qty, setQty] = useState("");
   const [operator, setOperator] = useState("");
+  const [spk, setSpk] = useState("");
   const [bahanSisa, setBahanSisa] = useState(false);
   const [error, setError] = useState("");
   const barcodeRef = useRef(null);
@@ -139,6 +140,16 @@ export default function ScanForm({
       return;
     }
 
+    const spkVal = spk.trim();
+    if (!spkVal) {
+      setError("No. SPK wajib diisi");
+      return;
+    }
+    if (!/^\d{4}$/.test(spkVal)) {
+      setError("No. SPK harus 4 digit angka (contoh: 1234)");
+      return;
+    }
+
     onGenerate({
       barcode: barcode.trim(),
       barcodeDate: ddmmyyToDateValue(barcodeDateInfo || dateRaw),
@@ -147,6 +158,7 @@ export default function ScanForm({
       shift: shift.trim(),
       qty: qtyNum,
       operator: operator.trim(),
+      spk: spkVal,
       bahanSisa,
     });
   }
@@ -247,7 +259,7 @@ export default function ScanForm({
           </div>
 
           <div className="row">
-            <div className="col-md-6 mb-3">
+            <div className="col-md-4 mb-3">
               <label className="form-label" htmlFor="qty">Jumlah Barcode</label>
               <input
                 id="qty"
@@ -261,7 +273,7 @@ export default function ScanForm({
               />
               <div className="form-text">Range 1–500</div>
             </div>
-            <div className="col-md-6 mb-3">
+            <div className="col-md-4 mb-3">
               <label className="form-label" htmlFor="operator">Operator</label>
               <input
                 id="operator"
@@ -271,6 +283,23 @@ export default function ScanForm({
                 onChange={(e) => setOperator(e.target.value)}
                 placeholder="Nama operator"
               />
+            </div>
+            <div className="col-md-4 mb-3">
+              <label className="form-label" htmlFor="spk">No. SPK <span className="req">*</span></label>
+              <input
+                id="spk"
+                className="form-control"
+                type="text"
+                value={spk}
+                onChange={(e) => setSpk(e.target.value)}
+                placeholder="4 digit angka"
+                autoComplete="off"
+                spellCheck={false}
+                required
+                pattern="[0-9]{4}"
+                maxLength={4}
+              />
+              <div className="form-text">cth: 1234 — harus 4 digit angka</div>
             </div>
           </div>
 
@@ -298,6 +327,7 @@ export default function ScanForm({
             <p className="mb-1"><strong>Tanggal Rollsheet:</strong> {fmtProdDate(result.barcodeDate)} &middot; <strong>Shift:</strong> {result.shift}</p>
             <p className="mb-1"><strong>Tanggal Produksi:</strong> {fmtProdDate(result.productionDate)}</p>
             <p className="mb-1"><strong>Jumlah:</strong> {result.count} barcode dibuat</p>
+            {result.spk && <p className="mb-1"><strong>No. SPK:</strong> {result.spk}</p>}
 
             <div className="barcode-list-title">
               <i className="bi bi-upc-scan" />
@@ -329,6 +359,7 @@ export default function ScanForm({
             <p className="mb-1"><strong>Tanggal Produksi:</strong> {fmtProdDate(generated.productionDate)} &middot; <strong>Shift:</strong> {generated.shift}</p>
             <p className="mb-1"><strong>Jumlah:</strong> {generated.range.length} barcode</p>
             {generated.operator && <p className="mb-1"><strong>Operator:</strong> {generated.operator}</p>}
+            {generated.spk && <p className="mb-1"><strong>No. SPK:</strong> {generated.spk}</p>}
 
             <div className="barcode-list-title">
               <i className="bi bi-upc-scan" />

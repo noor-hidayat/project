@@ -168,20 +168,40 @@ export default function DailySummary() {
     const columns = [
       "barcode", "product_code", "product_name", "barcode_date",
       "barcode_shift", "production_date", "shift", "serial_number",
-      "operator", "admin_user", "trx_code", "bahan_sisa", "created_at",
+      "operator", "spk", "admin_user", "trx_code", "bahan_sisa", "created_at",
     ];
+
+    const labels = {
+      barcode: "Barcode",
+      product_code: "Kode Produk",
+      product_name: "Nama Produk",
+      barcode_date: "Tanggal Barcode",
+      barcode_shift: "Shift Barcode",
+      production_date: "Tanggal Produksi",
+      shift: "Shift",
+      serial_number: "No. Seri",
+      operator: "Operator",
+      spk: "No. SPK",
+      admin_user: "Diinput Oleh",
+      trx_code: "Kode Transaksi",
+      bahan_sisa: "Bahan Sisa",
+      created_at: "Waktu Input",
+    };
+
+    const header = columns.map((c) => labels[c] || c);
 
     const data = rows.map((r) => {
       const obj = {};
-      columns.forEach((c) => { obj[c] = r[c] ?? ""; });
+      columns.forEach((c) => { obj[labels[c] || c] = r[c] ?? ""; });
       return obj;
     });
 
-    const ws = XLSX.utils.json_to_sheet(data, { header: columns });
-    ws["!cols"] = columns.map((c) => {
+    const ws = XLSX.utils.json_to_sheet(data, { header });
+    ws["!cols"] = header.map((h, i) => {
+      const key = columns[i];
       const maxLen = Math.max(
-        c.length,
-        ...data.map((d) => String(d[c]).length)
+        h.length,
+        ...data.map((d) => String(d[key]).length)
       );
       return { wch: Math.min(Math.max(maxLen + 2, 12), 60) };
     });
