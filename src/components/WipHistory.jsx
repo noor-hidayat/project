@@ -35,8 +35,7 @@ export default function WipHistory() {
   const [deleteError, setDeleteError] = useState("");
   const [printRow, setPrintRow] = useState(null);
   const [printToken, setPrintToken] = useState(0);
-  const [menuOpen, setMenuOpen] = useState("");
-  const [menuDir, setMenuDir] = useState("down");
+  const [menuPos, setMenuPos] = useState(null);
   const menuRef = useRef(null);
   const [actor] = useState(() => {
     try {
@@ -47,24 +46,36 @@ export default function WipHistory() {
   });
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuPos) return;
     const onDocClick = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMenuOpen("");
+        setMenuPos(null);
       }
     };
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
-  }, [menuOpen]);
+  }, [menuPos]);
+
+  useEffect(() => {
+    if (!menuPos) return;
+    const onScroll = () => setMenuPos(null);
+    const onResize = () => setMenuPos(null);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [menuPos]);
 
   function handlePrint(r) {
-    setMenuOpen("");
+    setMenuPos(null);
     setPrintRow(r);
     setPrintToken((t) => t + 1);
   }
 
   function openDelete(r) {
-    setMenuOpen("");
+    setMenuPos(null);
     setDeleteRow(r);
   }
 
@@ -85,52 +96,55 @@ export default function WipHistory() {
 
   const hasActiveFilter = search !== "" || filterDate !== "" || filterShift !== "";
 
-  const baseQuery = useCallback(() => {
-    const q = debouncedSearch.trim();
-    const query = supabase.from("wip_logs");
-    if (q) {
-      query.or([
-        `product_name.ilike.%${q}%`,
-        `batch.ilike.%${q}%`,
-        `spk.ilike.%${q}%`,
-        `operator.ilike.%${q}%`,
-        `admin_user.ilike.%${q}%`,
-      ].join(","));
-    }
-    if (filterDate) query.eq("production_date", filterDate);
-    if (filterShift) query.eq("shift", filterShift);
-    return query;
-  }, [debouncedSearch, filterDate, filterShift]);
-
-  const baseQueryRef = useRef(baseQuery);
-  useEffect(() => {
-    baseQueryRef.current = baseQuery;
-  }, [baseQuery]);
+  const loadIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const reqId = ++loadIdRef.current;
     setLoading(true);
     setError("");
 
-    const { data, count, error: err } = await baseQueryRef.current()
-      .select("id, product_name, batch, spk, qty, operator, production_date, shift, admin_user, created_at", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range((page - 1) * perPage, page * perPage - 1);
+    try {
+      const q = debouncedSearch.trim();
+      let query = supabase
+        .from("wip_logs")
+        .select("id, product_name, batch, spk, qty, operator, production_date, shift, admin_user, created_at", { count: "exact" });
 
-    if (err) {
-      setError(err.message);
-      setLoading(false);
-      return;
+      if (q) {
+        query = query.or([
+          `product_name.ilike.%${q}%`,
+          `batch.ilike.%${q}%`,
+          `spk.ilike.%${q}%`,
+          `operator.ilike.%${q}%`,
+          `admin_user.ilike.%${q}%`,
+        ].join(","));
+      }
+      if (filterDate) query = query.eq("production_date", filterDate);
+      if (filterShift) query = query.eq("shift", filterShift);
+
+      const { data, count, error: err } = await query
+        .order("created_at", { ascending: false })
+        .range((page - 1) * perPage, page * perPage - 1);
+
+      if (reqId !== loadIdRef.current) return;
+
+      if (err) {
+        setError(err.message);
+        return;
+      }
+
+      setRows(data || []);
+      setTotal(count ?? 0);
+    } catch (e) {
+      if (reqId !== loadIdRef.current) return;
+      setError(e?.message || "Terjadi kesalahan saat memuat data.");
+    } finally {
+      if (reqId === loadIdRef.current) setLoading(false);
     }
-
-    setRows(data || []);
-    setTotal(count ?? 0);
-    setLoading(false);
-  }, [page, perPage]);
+  }, [page, perPage, debouncedSearch, filterDate, filterShift]);
 
   useEffect(() => {
-    const t = setTimeout(() => load(), 50);
-    return () => clearTimeout(t);
-  }, [load, baseQuery]);
+    load();
+  }, [load]);
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
@@ -279,21 +293,40 @@ export default function WipHistory() {
                     <td>{fmtTime(r.created_at)}</td>
                     <td>
                       <div className="row-actions">
-                        <div className="row-menu" ref={menuOpen === r.id ? menuRef : null}>
+                        <div className="row-menu" ref={menuPos?.id === r.id ? menuRef : null}>
                           <button
-                            className={"btn-expand row-menu-toggle" + (menuOpen === r.id ? " active" : "")}
+                            className={"btn-expand row-menu-toggle" + (menuPos?.id === r.id ? " active" : "")}
                             title="Aksi"
                             onClick={(e) => {
                               e.stopPropagation();
                               const rect = e.currentTarget.getBoundingClientRect();
-                              setMenuDir(window.innerHeight - rect.bottom < 130 ? "up" : "down");
-                              setMenuOpen((cur) => (cur === r.id ? "" : r.id));
+                              const up = window.innerHeight - rect.bottom < 130;
+                              if (menuPos?.id === r.id) {
+                                setMenuPos(null);
+                                return;
+                              }
+                              setMenuPos({
+                                id: r.id,
+                                up,
+                                top: up ? null : rect.bottom + 6,
+                                bottom: up ? window.innerHeight - rect.top + 6 : null,
+                                right: window.innerWidth - rect.right,
+                              });
                             }}
                           >
                             <i className="bi bi-three-dots-vertical" />
                           </button>
-                          {menuOpen === r.id && (
-                            <div className={"row-menu-dropdown" + (menuDir === "up" ? " up" : "")}>
+                          {menuPos?.id === r.id && (
+                            <div
+                              className={"row-menu-dropdown" + (menuPos.up ? " up" : "")}
+                              style={{
+                                position: "fixed",
+                                top: menuPos.top,
+                                bottom: menuPos.bottom,
+                                right: menuPos.right,
+                                margin: 0,
+                              }}
+                            >
                               <button
                                 className="row-menu-item"
                                 onClick={() => handlePrint(r)}

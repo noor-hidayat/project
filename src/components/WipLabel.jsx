@@ -12,6 +12,10 @@ export default function WipLabel({ row }) {
         <div className="wip-label-main">
           <div className="wip-label-product">{row.product_name}</div>
           <div className="wip-label-grid">
+            <div className="wip-label-cell wide">
+              <span className="wip-label-key">Batch QC PM1</span>
+              <span className="wip-label-value mono">{row.batch}</span>
+            </div>
             <div className="wip-label-cell">
               <span className="wip-label-key">SPK</span>
               <span className="wip-label-value mono">{row.spk}</span>
@@ -28,10 +32,10 @@ export default function WipLabel({ row }) {
               <span className="wip-label-key">Shift</span>
               <span className="wip-label-value">{row.shift || "-"}</span>
             </div>
-          </div>
-          <div className="wip-label-date">
-            <span className="wip-label-key">Tanggal</span>
-            <span className="wip-label-value mono">{fmtDate(row.production_date)}</span>
+            <div className="wip-label-cell wide">
+              <span className="wip-label-key">Tanggal</span>
+              <span className="wip-label-value mono">{fmtDate(row.production_date)}</span>
+            </div>
           </div>
         </div>
         <div className="wip-label-qr">
@@ -41,7 +45,6 @@ export default function WipLabel({ row }) {
             level="M"
             marginSize={2}
           />
-          <div className="wip-label-batch mono">{row.batch}</div>
         </div>
       </div>
     </div>

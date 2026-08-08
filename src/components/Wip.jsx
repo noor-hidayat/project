@@ -253,7 +253,7 @@ export default function Wip({ user }) {
         <form className="card-body" onSubmit={handleSubmit}>
           <div className="row">
             <div className="col-12 mb-3">
-              <label className="form-label" htmlFor="wipBatch">Batch Produk <span className="req">*</span></label>
+              <label className="form-label" htmlFor="wipBatch">Batch QC PM1 <span className="req">*</span></label>
               <input
                 id="wipBatch"
                 ref={batchRef}
@@ -267,7 +267,7 @@ export default function Wip({ user }) {
                     productNameRef.current?.focus();
                   }
                 }}
-                placeholder="Scan atau ketik nomor batch..."
+                placeholder="Scan batch, cth: 2RS-X9TW6V-43-22"
                 autoComplete="off"
                 spellCheck={false}
                 required

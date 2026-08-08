@@ -1222,8 +1222,8 @@
 }
 
 .wip-label-product {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 800;
   color: #0f172a;
   line-height: 1.25;
   margin-bottom: 8px;
@@ -1231,27 +1231,34 @@
 }
 
 .wip-label-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
+  align-content: space-between;
   gap: 0 12px;
 }
 
 .wip-label-cell {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   min-width: 0;
   padding: 4px 0;
   border-top: 1px dashed #94a3b8;
 }
 
-.wip-label-cell:nth-child(even) {
+.wip-label-cell.wide {
+  grid-column: 1 / -1;
+}
+
+.wip-label-cell:not(.wide):nth-child(even) {
   border-left: 1px dashed #94a3b8;
   padding-left: 12px;
 }
 
 .wip-label-key {
-  font-size: 8px;
-  font-weight: 600;
+  font-size: 9px;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #64748b;
@@ -1259,19 +1266,10 @@
 }
 
 .wip-label-value {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   color: #0f172a;
   overflow-wrap: anywhere;
-}
-
-.wip-label-date {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-top: 2px;
-  padding-top: 4px;
-  border-top: 1px dashed #94a3b8;
 }
 
 .wip-label-qr {
@@ -1279,19 +1277,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   flex-shrink: 0;
   padding: 6px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
-}
-
-.wip-label-batch {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-align: center;
-  color: #0f172a;
 }
 
 .history-table {
@@ -2994,40 +2983,35 @@
   }
 
   .wip-label-qr {
-    gap: 3px;
-    padding: 3px;
+    padding: 2px;
     border-color: #cbd5e1;
     border-radius: 4px;
   }
 
   .wip-label-qr svg {
-    width: 26mm;
-    height: 26mm;
-  }
-
-  .wip-label-batch {
-    font-size: 9px;
+    width: 30mm;
+    height: 30mm;
   }
 
   .wip-label-product {
-    font-size: 11px;
-    margin-bottom: 4px;
+    font-size: 12.5px;
+    margin-bottom: 2px;
+    line-height: 1.15;
   }
 
   .wip-label-grid {
-    gap: 2px 8px;
+    gap: 0 8px;
   }
 
   .wip-label-key {
-    font-size: 7px;
+    font-size: 8px;
   }
 
   .wip-label-value {
-    font-size: 9.5px;
+    font-size: 11.5px;
   }
 
-  .wip-label-date {
-    margin-top: 2px;
-    padding-top: 2px;
+  .wip-label-cell {
+    padding: 1px 0;
   }
 }

@@ -31,8 +31,7 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
   const [deleteTrx, setDeleteTrx] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-  const [menuOpen, setMenuOpen] = useState("");
-  const [menuDir, setMenuDir] = useState("down");
+  const [menuPos, setMenuPos] = useState(null);
   const [actor] = useState(() => {
     try {
       return JSON.parse(sessionStorage.getItem("barcode_app_user") || "null");
@@ -53,68 +52,81 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
 
   const hasActiveFilter = search !== "" || filterDate !== "" || filterShift !== "";
 
-  const baseQuery = useCallback(() => {
-    const q = debouncedSearch.trim();
-    const query = supabase.from("trx_summary");
-    if (q) {
-      query.or([
-        `product_name.ilike.%${q}%`,
-        `product_code.ilike.%${q}%`,
-        `trx_code.ilike.%${q}%`,
-        `operator.ilike.%${q}%`,
-        `spk.ilike.%${q}%`,
-        `admin_user.ilike.%${q}%`,
-      ].join(","));
-    }
-    if (filterDate) query.eq("production_date", filterDate);
-    if (filterShift) query.eq("shift", filterShift);
-    return query;
-  }, [debouncedSearch, filterDate, filterShift]);
-
-  const baseQueryRef = useRef(baseQuery);
-  useEffect(() => {
-    baseQueryRef.current = baseQuery;
-  }, [baseQuery]);
+  const loadIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const reqId = ++loadIdRef.current;
     setLoading(true);
     setError("");
 
-    const query = baseQueryRef.current()
-      .select("*", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range((page - 1) * perPage, page * perPage - 1);
+    try {
+      const q = debouncedSearch.trim();
+      let query = supabase
+        .from("trx_summary")
+        .select("*", { count: "exact" });
 
-    const { data, count, error: err } = await query;
+      if (q) {
+        query = query.or([
+          `product_name.ilike.%${q}%`,
+          `product_code.ilike.%${q}%`,
+          `trx_code.ilike.%${q}%`,
+          `operator.ilike.%${q}%`,
+          `spk.ilike.%${q}%`,
+          `admin_user.ilike.%${q}%`,
+        ].join(","));
+      }
+      if (filterDate) query = query.eq("production_date", filterDate);
+      if (filterShift) query = query.eq("shift", filterShift);
 
-    if (err) {
-      setError(err.message);
-      setLoading(false);
-      return;
+      const { data, count, error: err } = await query
+        .order("created_at", { ascending: false })
+        .range((page - 1) * perPage, page * perPage - 1);
+
+      if (reqId !== loadIdRef.current) return;
+
+      if (err) {
+        setError(err.message);
+        return;
+      }
+
+      setTransactions(data || []);
+      setTotal(count ?? 0);
+    } catch (e) {
+      if (reqId !== loadIdRef.current) return;
+      setError(e?.message || "Terjadi kesalahan saat memuat data.");
+    } finally {
+      if (reqId === loadIdRef.current) setLoading(false);
     }
-
-    setTransactions(data || []);
-    setTotal(count ?? 0);
-    setLoading(false);
-  }, [page, perPage]);
+  }, [page, perPage, debouncedSearch, filterDate, filterShift]);
 
   useEffect(() => {
-    const t = setTimeout(() => load(), 50);
-    return () => clearTimeout(t);
-  }, [load, baseQuery]);
+    load();
+  }, [load]);
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuPos) return;
     const onDocClick = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMenuOpen("");
+        setMenuPos(null);
       }
     };
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
-  }, [menuOpen]);
+  }, [menuPos]);
+
+  useEffect(() => {
+    if (!menuPos) return;
+    const onScroll = () => setMenuPos(null);
+    const onResize = () => setMenuPos(null);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [menuPos]);
 
   function resetFilters() {
     setSearch("");
@@ -391,26 +403,45 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
                         <i className="bi bi-eye" />
                       </button>
                       {(canEdit || canDelete) && (
-                        <div className="row-menu" ref={menuOpen === t.trx_code ? menuRef : null}>
+                        <div className="row-menu" ref={menuPos?.id === t.trx_code ? menuRef : null}>
                           <button
-                            className={"btn-expand row-menu-toggle" + (menuOpen === t.trx_code ? " active" : "")}
+                            className={"btn-expand row-menu-toggle" + (menuPos?.id === t.trx_code ? " active" : "")}
                             title="Keterangan"
                             onClick={(e) => {
                               e.stopPropagation();
                               const rect = e.currentTarget.getBoundingClientRect();
-                              setMenuDir(window.innerHeight - rect.bottom < 130 ? "up" : "down");
-                              setMenuOpen((cur) => (cur === t.trx_code ? "" : t.trx_code));
+                              const up = window.innerHeight - rect.bottom < 130;
+                              if (menuPos?.id === t.trx_code) {
+                                setMenuPos(null);
+                                return;
+                              }
+                              setMenuPos({
+                                id: t.trx_code,
+                                up,
+                                top: up ? null : rect.bottom + 6,
+                                bottom: up ? window.innerHeight - rect.top + 6 : null,
+                                right: window.innerWidth - rect.right,
+                              });
                             }}
                           >
                             <i className="bi bi-three-dots-vertical" />
                           </button>
-                          {menuOpen === t.trx_code && (
-                            <div className={"row-menu-dropdown" + (menuDir === "up" ? " up" : "")}>
+                          {menuPos?.id === t.trx_code && (
+                            <div
+                              className={"row-menu-dropdown" + (menuPos.up ? " up" : "")}
+                              style={{
+                                position: "fixed",
+                                top: menuPos.top,
+                                bottom: menuPos.bottom,
+                                right: menuPos.right,
+                                margin: 0,
+                              }}
+                            >
                               {canEdit && (
                                 <button
                                   className="row-menu-item"
                                   onClick={() => {
-                                    setMenuOpen("");
+                                    setMenuPos(null);
                                     openEdit(t);
                                   }}
                                 >
@@ -422,7 +453,7 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
                                 <button
                                   className="row-menu-item danger"
                                   onClick={() => {
-                                    setMenuOpen("");
+                                    setMenuPos(null);
                                     setDeleteTrx(t);
                                   }}
                                 >
