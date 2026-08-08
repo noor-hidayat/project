@@ -7,6 +7,8 @@ const ACTION_META = {
   transaction_input: { label: "Input Transaksi", icon: "bi-upc-scan", cls: "action-input" },
   transaction_edit: { label: "Edit Transaksi", icon: "bi-pencil", cls: "action-edit" },
   transaction_delete: { label: "Hapus Transaksi", icon: "bi-trash", cls: "action-delete" },
+  wip_input: { label: "Input WIP", icon: "bi-boxes", cls: "action-input" },
+  wip_delete: { label: "Hapus WIP", icon: "bi-trash", cls: "action-delete" },
   password_change: { label: "Ganti Password", icon: "bi-key", cls: "action-password" },
 };
 

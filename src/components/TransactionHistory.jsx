@@ -32,6 +32,7 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [menuOpen, setMenuOpen] = useState("");
+  const [menuDir, setMenuDir] = useState("down");
   const [actor] = useState(() => {
     try {
       return JSON.parse(sessionStorage.getItem("barcode_app_user") || "null");
@@ -396,13 +397,15 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
                             title="Keterangan"
                             onClick={(e) => {
                               e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setMenuDir(window.innerHeight - rect.bottom < 130 ? "up" : "down");
                               setMenuOpen((cur) => (cur === t.trx_code ? "" : t.trx_code));
                             }}
                           >
                             <i className="bi bi-three-dots-vertical" />
                           </button>
                           {menuOpen === t.trx_code && (
-                            <div className="row-menu-dropdown">
+                            <div className={"row-menu-dropdown" + (menuDir === "up" ? " up" : "")}>
                               {canEdit && (
                                 <button
                                   className="row-menu-item"

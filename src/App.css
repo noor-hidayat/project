@@ -1150,6 +1150,150 @@
   overflow-x: auto;
 }
 
+/* ============= WIP ============= */
+.wip-product-wrap {
+  position: relative;
+}
+
+.wip-product-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  margin-top: 4px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+}
+
+.wip-product-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.wip-product-option.active {
+  background: var(--primary-light);
+}
+
+.wip-product-opt-code {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.wip-product-empty {
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.wip-label-print {
+  display: none;
+}
+
+.wip-label {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  max-width: 520px;
+}
+
+.wip-label-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wip-label-product {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+
+.wip-label-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+}
+
+.wip-label-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 4px 0;
+  border-top: 1px dashed #94a3b8;
+}
+
+.wip-label-cell:nth-child(even) {
+  border-left: 1px dashed #94a3b8;
+  padding-left: 12px;
+}
+
+.wip-label-key {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.wip-label-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.wip-label-date {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px dashed #94a3b8;
+}
+
+.wip-label-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+.wip-label-batch {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: #0f172a;
+}
+
 .history-table {
   width: 100%;
   border-collapse: collapse;
@@ -1278,6 +1422,26 @@
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
   z-index: 50;
   animation: row-menu-in 0.12s ease;
+}
+
+.row-menu-dropdown.up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.row-menu-dropdown.up {
+  animation: row-menu-in-up 0.12s ease;
+}
+
+@keyframes row-menu-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes row-menu-in {
@@ -2774,5 +2938,96 @@
 
   .print-report-sign .sign-line {
     margin-top: 34px;
+  }
+}
+
+@media print {
+  @page {
+    size: 104mm 50mm;
+    margin: 2mm;
+  }
+
+  html,
+  body,
+  #root {
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: block !important;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  .sidebar,
+  .topbar {
+    display: none !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .wip-label-print,
+  .wip-label-print * {
+    visibility: visible;
+  }
+
+  .wip-label-print {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .wip-label {
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    gap: 8px;
+  }
+
+  .wip-label-qr {
+    gap: 3px;
+    padding: 3px;
+    border-color: #cbd5e1;
+    border-radius: 4px;
+  }
+
+  .wip-label-qr svg {
+    width: 26mm;
+    height: 26mm;
+  }
+
+  .wip-label-batch {
+    font-size: 9px;
+  }
+
+  .wip-label-product {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  .wip-label-grid {
+    gap: 2px 8px;
+  }
+
+  .wip-label-key {
+    font-size: 7px;
+  }
+
+  .wip-label-value {
+    font-size: 9.5px;
+  }
+
+  .wip-label-date {
+    margin-top: 2px;
+    padding-top: 2px;
   }
 }
