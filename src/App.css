@@ -3087,17 +3087,17 @@
   border-radius: 12px;
   overflow: hidden;
   background: #0f172a;
-  min-height: 180px;
+  min-height: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
-  max-width: 340px;
+  max-width: 420px;
   margin: 0 auto;
 }
 
 .trace-cam-video {
   width: 100%;
-  max-height: 280px;
+  max-height: 360px;
   object-fit: cover;
   display: block;
 }
@@ -3111,7 +3111,7 @@
   left: 2%;
   right: 2%;
   top: 50%;
-  height: 96px;
+  height: 120px;
   transform: translateY(-50%);
   border: 2px solid rgba(255, 255, 255, 0.75);
   border-radius: 8px;
@@ -3222,11 +3222,11 @@
 
   .trace-cam-region {
     min-height: 0;
-    max-width: 340px;
+    max-width: 420px;
   }
 
   .trace-cam-video {
-    max-height: 160px;
+    max-height: 250px;
   }
 
   .trace-cam-card .card-body {
@@ -3297,7 +3297,7 @@
   }
 
   .trace-cam-frame {
-    height: 72px;
+    height: 100px;
     left: 2%;
     right: 2%;
   }

@@ -335,7 +335,6 @@ export default function TraceSpk() {
           if (result && !state.stopped) {
             scanLockRef.current = true;
             const text = result.getText();
-            vibrate(80);
             beep(880, 50);
             const res = await lookup(text);
             if (!state.stopped) {
@@ -345,16 +344,16 @@ export default function TraceSpk() {
                 found: res.found || res.duplicate,
               });
               if (res.duplicate) {
-                vibrate([80, 50, 80]);
+                vibrate([120, 60, 120]);
                 beep(760, 120);
                 showToast("Barcode sudah ada di daftar trace", "warn");
               } else if (res.found) {
-                vibrate([180, 80, 180]);
+                vibrate([250, 80, 250, 80, 250]);
                 beep(1046, 140);
                 beep(1568, 180, "sine", 0.14);
                 showToast("Barcode ditemukan", "ok");
               } else {
-                vibrate(300);
+                vibrate([280, 90, 280]);
                 beep(220, 320, "sawtooth");
                 showToast("Data tidak ditemukan", "error");
               }
