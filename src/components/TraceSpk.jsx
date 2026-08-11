@@ -439,7 +439,7 @@ export default function TraceSpk() {
       {error && <div className="alert alert-danger mt-3">{error}</div>}
 
       {cameraOpen && (
-        <div className="card mt-3">
+        <div className="card trace-cam-card mt-3">
           <div className="card-header d-flex align-items-center justify-content-between">
             <div className="d-flex align-items-center">
               <i className="bi bi-camera fs-4 me-2" />

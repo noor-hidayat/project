@@ -3087,17 +3087,17 @@
   border-radius: 12px;
   overflow: hidden;
   background: #0f172a;
-  min-height: 240px;
+  min-height: 180px;
   display: flex;
   align-items: center;
   justify-content: center;
-  max-width: 440px;
+  max-width: 340px;
   margin: 0 auto;
 }
 
 .trace-cam-video {
   width: 100%;
-  max-height: 420px;
+  max-height: 280px;
   object-fit: cover;
   display: block;
 }
@@ -3108,15 +3108,15 @@
 
 .trace-cam-frame {
   position: absolute;
-  left: 8%;
-  right: 8%;
+  left: 2%;
+  right: 2%;
   top: 50%;
-  height: 110px;
+  height: 56px;
   transform: translateY(-50%);
-  border: 2px solid rgba(255, 255, 255, 0.65);
-  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  border-radius: 8px;
   pointer-events: none;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.38);
 }
 
 .trace-scan-badge {
@@ -3222,11 +3222,15 @@
 
   .trace-cam-region {
     min-height: 0;
-    max-width: 100%;
+    max-width: 340px;
   }
 
   .trace-cam-video {
-    max-height: 200px;
+    max-height: 160px;
+  }
+
+  .trace-cam-card .card-body {
+    padding: 12px 14px 14px;
   }
 }
 
@@ -3292,9 +3296,9 @@
   }
 
   .trace-cam-frame {
-    height: 78px;
-    left: 6%;
-    right: 6%;
+    height: 44px;
+    left: 2%;
+    right: 2%;
   }
 
   .trace-scan-result {
