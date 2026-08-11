@@ -368,7 +368,7 @@ export default function TraceSpk() {
                 />
               </div>
             </div>
-            <div className="col-md-4 d-flex gap-2">
+            <div className="trace-scan-actions col-md-4 d-flex gap-2">
               <button
                 type="button"
                 className={"btn " + (cameraOpen ? "btn-outline-danger" : "btn-outline-primary")}
@@ -464,7 +464,7 @@ export default function TraceSpk() {
             </button>
           </div>
           <div className="table-wrap">
-            <table className="history-table">
+            <table className="history-table trace-table">
               <thead>
                 <tr>
                   <th>No</th>

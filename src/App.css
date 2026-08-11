@@ -3171,3 +3171,86 @@
   background: #fef2f2;
   border: 1px solid rgba(220, 38, 38, 0.2);
 }
+
+/* ===== Trace SPK — mobile ===== */
+.table-wrap {
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .trace-page-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .trace-page-head h2 {
+    font-size: 1.05rem;
+  }
+
+  .trace-page-head .summary-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .trace-scan-actions {
+    flex-wrap: wrap;
+  }
+
+  .trace-scan-actions .btn {
+    flex: 1 1 0;
+    font-size: 0.86rem;
+    white-space: nowrap;
+  }
+
+  .trace-page .card-header {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .trace-cam-video {
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 600px) {
+  .trace-table th:nth-child(5),
+  .trace-table td:nth-child(5) {
+    display: none;
+  }
+
+  .trace-table th,
+  .trace-table td {
+    padding: 8px 8px;
+  }
+
+  .trace-table th:nth-child(2),
+  .trace-table td:nth-child(2) {
+    min-width: 92px;
+  }
+
+  .trace-table .cell-mono {
+    font-size: 0.68rem;
+  }
+
+  .trace-table .cell-product {
+    max-width: 120px;
+    font-size: 0.72rem;
+  }
+
+  .trace-cam-frame {
+    height: 90px;
+    left: 6%;
+    right: 6%;
+  }
+
+  .trace-scan-result {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .trace-scan-result code {
+    max-width: 100%;
+    white-space: normal;
+    word-break: break-all;
+  }
+}
