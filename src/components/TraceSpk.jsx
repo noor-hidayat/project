@@ -532,19 +532,19 @@ export default function TraceSpk() {
                   <tr key={r.barcode + "-" + i}>
                     <td className="cell-num">{i + 1}</td>
                     <td className="cell-mono">{r.barcode}</td>
-                    <td className="cell-product" title={r.product_name || r.product_code || "-"}>
+                    <td className="cell-product" title={r.product_name || r.product_code || "-"} data-label="Produk">
                       {r.product_name || r.product_code || "-"}
                     </td>
                     <td title={r.spk || "-"}>{r.spk || "-"}</td>
                     <td title={r.operator || "-"}>{r.operator || "-"}</td>
-                    <td>{fmtProdDate(r.production_date)}</td>
-                    <td>
+                    <td data-label="Tanggal">{fmtProdDate(r.production_date)}</td>
+                    <td data-label="Shift">
                       {r.shift}
                       {(r.bahan_sisa === true || r.bahan_sisa === "true") && (
                         <span className="trace-sisa-badge">sisa</span>
                       )}
                     </td>
-                    <td className="cell-mono">{r.trx_code || "-"}</td>
+                    <td className="cell-mono" data-label="Trx">{r.trx_code || "-"}</td>
                     <td>
                       <button
                         className="trace-remove"
