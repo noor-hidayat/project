@@ -3272,6 +3272,11 @@
     display: none;
   }
 
+  .trace-table th:nth-child(4),
+  .trace-table td:nth-child(4) {
+    display: table-cell;
+  }
+
   .trace-table th,
   .trace-table td {
     padding: 8px 8px;
