@@ -12,21 +12,26 @@ import {
   fetchRecentBarcodes,
 } from "../lib/traceCache";
 
-const SCAN_HINTS = new Map([
-  [
-    DecodeHintType.POSSIBLE_FORMATS,
-    [
-      BarcodeFormat.CODE_128,
-      BarcodeFormat.CODE_39,
-      BarcodeFormat.EAN_13,
-      BarcodeFormat.EAN_8,
-      BarcodeFormat.UPC_A,
-      BarcodeFormat.UPC_E,
-      BarcodeFormat.ITF,
-    ],
-  ],
+const SCAN_FORMATS = [
+  BarcodeFormat.CODE_128,
+  BarcodeFormat.CODE_39,
+  BarcodeFormat.EAN_13,
+  BarcodeFormat.EAN_8,
+  BarcodeFormat.UPC_A,
+  BarcodeFormat.UPC_E,
+  BarcodeFormat.ITF,
+];
+
+const SCAN_HINTS = new Map([[DecodeHintType.POSSIBLE_FORMATS, SCAN_FORMATS]]);
+
+const SCAN_HINTS_HARDER = new Map([
+  [DecodeHintType.POSSIBLE_FORMATS, SCAN_FORMATS],
   [DecodeHintType.TRY_HARDER, true],
 ]);
+
+const MAX_SCAN_WIDTH = 520;
+const FALLBACK_EMPTY_FRAMES = 6;
+const HARDER_EMPTY_FRAMES = 12;
 
 function fmtProdDate(d) {
   return d?.split("-").reverse().join("-") || "-";
@@ -47,6 +52,15 @@ function cameraErrorMessage(err) {
     return "Kamera tidak mendukung mode yang diminta. Coba perbarui browser Anda.";
   }
   return "Gagal mengaktifkan kamera: " + (err?.message || "kesalahan tidak diketahui");
+}
+
+function vibrate(pattern) {
+  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+  try {
+    navigator.vibrate(pattern);
+  } catch {
+    // abaikan jika perangkat tidak mendukung getaran
+  }
 }
 
 export default function TraceSpk() {
@@ -196,7 +210,7 @@ export default function TraceSpk() {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
-          width: { ideal: 1280 },
+          width: { ideal: 960 },
           height: { ideal: 720 },
         },
         audio: false,
@@ -210,37 +224,87 @@ export default function TraceSpk() {
       await videoEl.play();
 
       const reader = new BrowserMultiFormatOneDReader(SCAN_HINTS);
+      const harderReader = new BrowserMultiFormatOneDReader(SCAN_HINTS_HARDER);
+
+      const scanCanvas = document.createElement("canvas");
+      const scanCtx = scanCanvas.getContext("2d", { willReadFrequently: true });
+      const fullCanvas = document.createElement("canvas");
+      const fullCtx = fullCanvas.getContext("2d", { willReadFrequently: true });
+
+      const tryDecode = (canvas, r) => {
+        try {
+          return r.decodeFromCanvas(canvas);
+        } catch {
+          return null;
+        }
+      };
+
+      let emptyFrames = 0;
 
       const loop = async () => {
         if (state.stopped) return;
         if (scanLockRef.current || videoEl.readyState < 2) {
-          setTimeout(loop, 150);
+          setTimeout(loop, 50);
           return;
         }
-        try {
-          const result = await reader.decodeOnceFromVideoElement(videoEl);
-          if (result && !state.stopped) {
-            scanLockRef.current = true;
-            const text = result.getText();
-            const res = await lookup(text);
-            if (!state.stopped) {
-              setLastScan({
-                barcode: text,
-                duplicate: res.duplicate,
-                found: res.found || res.duplicate,
-              });
-            }
-            setTimeout(() => {
-              scanLockRef.current = false;
-            }, 1200);
-          }
-        } catch {
-          // frame tanpa/berisi barcode terbaca sebagian — lanjut
+
+        const vw = videoEl.videoWidth;
+        const vh = videoEl.videoHeight;
+        if (!vw || !vh) {
+          setTimeout(loop, 60);
+          return;
         }
-        setTimeout(loop, 120);
+
+        const scale = Math.min(1, MAX_SCAN_WIDTH / vw);
+        scanCanvas.width = Math.max(1, Math.round(vw * scale));
+        scanCanvas.height = Math.max(1, Math.round(vh * scale));
+        scanCtx.drawImage(videoEl, 0, 0, scanCanvas.width, scanCanvas.height);
+
+        let result = tryDecode(scanCanvas, reader);
+        if (!result) {
+          emptyFrames += 1;
+          if (emptyFrames >= HARDER_EMPTY_FRAMES) {
+            fullCanvas.width = vw;
+            fullCanvas.height = vh;
+            fullCtx.drawImage(videoEl, 0, 0, vw, vh);
+            result = tryDecode(fullCanvas, harderReader);
+          } else if (emptyFrames >= FALLBACK_EMPTY_FRAMES) {
+            fullCanvas.width = vw;
+            fullCanvas.height = vh;
+            fullCtx.drawImage(videoEl, 0, 0, vw, vh);
+            result = tryDecode(fullCanvas, reader);
+          }
+        } else {
+          emptyFrames = 0;
+        }
+
+        if (result && !state.stopped) {
+          scanLockRef.current = true;
+          const text = result.getText();
+          const res = await lookup(text);
+          if (!state.stopped) {
+            setLastScan({
+              barcode: text,
+              duplicate: res.duplicate,
+              found: res.found || res.duplicate,
+            });
+            if (res.duplicate) {
+              vibrate([40, 40, 40]);
+            } else if (res.found) {
+              vibrate([120, 60, 120]);
+            } else {
+              vibrate(200);
+            }
+          }
+          setTimeout(() => {
+            scanLockRef.current = false;
+          }, 1100);
+        }
+
+        setTimeout(loop, 50);
       };
 
-      setTimeout(() => loop(), 250);
+      setTimeout(() => loop(), 120);
     } catch (err) {
       cameraStateRef.current = null;
       setCameraError(cameraErrorMessage(err));
