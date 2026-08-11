@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { BrowserMultiFormatOneDReader } from "@zxing/browser";
 import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import { supabase } from "../lib/supabaseClient";
+import init, * as wasm from "../../scanner-wasm/pkg/scanner_wasm.js";
 import {
   CACHE_FIELDS,
   CACHE_WINDOW_DAYS,
@@ -349,14 +350,45 @@ export default function TraceSpk() {
         const reader = new BrowserMultiFormatOneDReader(SCAN_HINTS);
         const harderReader = new BrowserMultiFormatOneDReader(SCAN_HINTS_HARDER);
 
+        // Init wasm scanner (rxing). Jika gagal, fallback ke @zxing.
+        let wasmOk = false;
+        try {
+          await init();
+          wasmOk = true;
+        } catch (initErr) {
+          console.warn("[scan] wasm scanner init gagal, pakai @zxing:", initErr);
+        }
+
         const scanCanvas = document.createElement("canvas");
         const scanCtx = scanCanvas.getContext("2d", { willReadFrequently: true });
         const fullCanvas = document.createElement("canvas");
         const fullCtx = fullCanvas.getContext("2d", { willReadFrequently: true });
 
-        const tryDecode = (canvas, r) => {
+        const decodeWasm = (canvas, hard) => {
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = new Uint8Array(
+            img.data.buffer,
+            img.data.byteOffset,
+            img.data.byteLength
+          );
+          return hard
+            ? wasm.decode_rgba_hard(canvas.width, canvas.height, data)
+            : wasm.decode_rgba(canvas.width, canvas.height, data);
+        };
+
+        const tryDecode = (canvas, r, hard) => {
+          if (wasmOk) {
+            try {
+              const text = decodeWasm(canvas, hard);
+              if (text) return text;
+            } catch (decodeErr) {
+              console.warn("[scan] decode wasm gagal, fallback @zxing:", decodeErr);
+            }
+          }
           try {
-            return r.decodeFromCanvas(canvas);
+            const res = r.decodeFromCanvas(canvas);
+            return res ? res.getText() : null;
           } catch {
             return null;
           }
@@ -391,7 +423,7 @@ export default function TraceSpk() {
           scanCtx.drawImage(videoEl, 0, top, vw, bandH, 0, 0, scanCanvas.width, scanCanvas.height);
 
           const d0 = performance.now();
-          let result = tryDecode(scanCanvas, reader);
+          let result = tryDecode(scanCanvas, reader, false);
           statsNow.decodes += 1;
           statsNow.decodeSumMs += performance.now() - d0;
 
@@ -401,12 +433,12 @@ export default function TraceSpk() {
               fullCanvas.width = vw;
               fullCanvas.height = vh;
               fullCtx.drawImage(videoEl, 0, 0, vw, vh);
-              result = tryDecode(fullCanvas, harderReader);
+              result = tryDecode(fullCanvas, harderReader, true);
             } else if (emptyFrames >= FALLBACK_EMPTY_FRAMES && emptyFrames % 3 === 0) {
               fullCanvas.width = vw;
               fullCanvas.height = vh;
               fullCtx.drawImage(videoEl, 0, 0, vw, vh);
-              result = tryDecode(fullCanvas, reader);
+              result = tryDecode(fullCanvas, reader, false);
             }
           } else {
             emptyFrames = 0;
@@ -415,7 +447,7 @@ export default function TraceSpk() {
           const d1 = performance.now();
 
           if (result && !state.stopped) {
-            const text = result.getText();
+            const text = result;
             const last = lastScannedRef.current;
             const now = performance.now();
             if (last && last.code === text && now - last.at < SCAN_COOLDOWN_MS * 2) {

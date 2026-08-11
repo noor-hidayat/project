@@ -1,0 +1,17 @@
+{
+  "name": "scanner-wasm",
+  "type": "module",
+  "description": "Scan kamera 1D barcode lintas web + wasm",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "scanner_wasm_bg.wasm",
+    "scanner_wasm.js",
+    "scanner_wasm.d.ts"
+  ],
+  "main": "scanner_wasm.js",
+  "types": "scanner_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
