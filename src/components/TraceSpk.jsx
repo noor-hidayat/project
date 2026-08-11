@@ -387,52 +387,54 @@ export default function TraceSpk() {
         </div>
       </div>
 
-      <div className="card mt-3">
-        <div className="card-header d-flex align-items-center">
-          <i className="bi bi-upc-scan fs-3 me-2" />
-          <h5 className="mb-0">Scan / Input Barcode</h5>
-        </div>
-        <form className="card-body" onSubmit={handleSubmit}>
-          <div className="row align-items-end">
-            <div className="col-md-8 mb-3 mb-md-0">
-              <label className="form-label" htmlFor="traceBarcode">
-                Barcode
-              </label>
-              <div className="input-group">
-                <span className="input-group-text">
-                  <i className="bi bi-search" />
-                </span>
-                <input
-                  ref={inputRef}
-                  id="traceBarcode"
-                  className="form-control mono"
-                  type="text"
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  placeholder="Scan atau ketik barcode..."
-                  autoComplete="off"
-                  spellCheck={false}
-                />
+      {!cameraOpen && (
+        <div className="card mt-3">
+          <div className="card-header d-flex align-items-center">
+            <i className="bi bi-upc-scan fs-3 me-2" />
+            <h5 className="mb-0">Scan / Input Barcode</h5>
+          </div>
+          <form className="card-body" onSubmit={handleSubmit}>
+            <div className="row align-items-end">
+              <div className="col-md-8 mb-3 mb-md-0">
+                <label className="form-label" htmlFor="traceBarcode">
+                  Barcode
+                </label>
+                <div className="input-group">
+                  <span className="input-group-text">
+                    <i className="bi bi-search" />
+                  </span>
+                  <input
+                    ref={inputRef}
+                    id="traceBarcode"
+                    className="form-control mono"
+                    type="text"
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    placeholder="Scan atau ketik barcode..."
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+              <div className="trace-scan-actions col-md-4 d-flex gap-2">
+                <button
+                  type="button"
+                  className={"btn " + (cameraOpen ? "btn-outline-danger" : "btn-outline-primary")}
+                  onClick={cameraOpen ? closeCamera : startCamera}
+                  title="Scan menggunakan kamera HP"
+                >
+                  <i className={"bi " + (cameraOpen ? "bi-camera-video-off" : "bi-camera") + " me-1"} />
+                  {cameraOpen ? "Tutup Kamera" : "Scan Kamera"}
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={searching}>
+                  <i className={"bi " + (searching ? "bi-hourglass-split" : "bi-arrow-right") + " me-1"} />
+                  {searching ? "Mencari..." : "Cari"}
+                </button>
               </div>
             </div>
-            <div className="trace-scan-actions col-md-4 d-flex gap-2">
-              <button
-                type="button"
-                className={"btn " + (cameraOpen ? "btn-outline-danger" : "btn-outline-primary")}
-                onClick={cameraOpen ? closeCamera : startCamera}
-                title="Scan menggunakan kamera HP"
-              >
-                <i className={"bi " + (cameraOpen ? "bi-camera-video-off" : "bi-camera") + " me-1"} />
-                {cameraOpen ? "Tutup Kamera" : "Scan Kamera"}
-              </button>
-              <button type="submit" className="btn btn-primary" disabled={searching}>
-                <i className={"bi " + (searching ? "bi-hourglass-split" : "bi-arrow-right") + " me-1"} />
-                {searching ? "Mencari..." : "Cari"}
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      )}
 
       {error && <div className="alert alert-danger mt-3">{error}</div>}
 

@@ -3091,6 +3091,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  max-width: 440px;
+  margin: 0 auto;
 }
 
 .trace-cam-video {
@@ -3218,8 +3220,13 @@
     row-gap: 6px;
   }
 
+  .trace-cam-region {
+    min-height: 0;
+    max-width: 100%;
+  }
+
   .trace-cam-video {
-    max-height: 300px;
+    max-height: 200px;
   }
 }
 
@@ -3249,7 +3256,7 @@
   }
 
   .trace-cam-frame {
-    height: 90px;
+    height: 78px;
     left: 6%;
     right: 6%;
   }
