@@ -191,11 +191,14 @@ export default function TraceSpk() {
     [barcode, lookup]
   );
 
-  const startCamera = useCallback(async () => {
-    if (cameraStateRef.current) return;
-    setCameraOpen(true);
+  const startCamera = useCallback(() => {
     setCameraError("");
     setLastScan(null);
+    setCameraOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!cameraOpen) return;
 
     const videoEl = videoRef.current;
     if (!videoEl) {
@@ -203,113 +206,122 @@ export default function TraceSpk() {
       return;
     }
 
+    let cancelled = false;
     const state = { stopped: false, stream: null };
     cameraStateRef.current = state;
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "environment",
-          width: { ideal: 960 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
-      if (state.stopped) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
-      state.stream = stream;
-      videoEl.srcObject = stream;
-      await videoEl.play();
-
-      const reader = new BrowserMultiFormatOneDReader(SCAN_HINTS);
-      const harderReader = new BrowserMultiFormatOneDReader(SCAN_HINTS_HARDER);
-
-      const scanCanvas = document.createElement("canvas");
-      const scanCtx = scanCanvas.getContext("2d", { willReadFrequently: true });
-      const fullCanvas = document.createElement("canvas");
-      const fullCtx = fullCanvas.getContext("2d", { willReadFrequently: true });
-
-      const tryDecode = (canvas, r) => {
-        try {
-          return r.decodeFromCanvas(canvas);
-        } catch {
-          return null;
-        }
-      };
-
-      let emptyFrames = 0;
-
-      const loop = async () => {
-        if (state.stopped) return;
-        if (scanLockRef.current || videoEl.readyState < 2) {
-          setTimeout(loop, 50);
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "environment",
+            width: { ideal: 960 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+        if (cancelled || state.stopped) {
+          stream.getTracks().forEach((t) => t.stop());
           return;
         }
+        state.stream = stream;
+        videoEl.srcObject = stream;
+        await videoEl.play();
 
-        const vw = videoEl.videoWidth;
-        const vh = videoEl.videoHeight;
-        if (!vw || !vh) {
-          setTimeout(loop, 60);
-          return;
-        }
+        const reader = new BrowserMultiFormatOneDReader(SCAN_HINTS);
+        const harderReader = new BrowserMultiFormatOneDReader(SCAN_HINTS_HARDER);
 
-        const scale = Math.min(1, MAX_SCAN_WIDTH / vw);
-        scanCanvas.width = Math.max(1, Math.round(vw * scale));
-        scanCanvas.height = Math.max(1, Math.round(vh * scale));
-        scanCtx.drawImage(videoEl, 0, 0, scanCanvas.width, scanCanvas.height);
+        const scanCanvas = document.createElement("canvas");
+        const scanCtx = scanCanvas.getContext("2d", { willReadFrequently: true });
+        const fullCanvas = document.createElement("canvas");
+        const fullCtx = fullCanvas.getContext("2d", { willReadFrequently: true });
 
-        let result = tryDecode(scanCanvas, reader);
-        if (!result) {
-          emptyFrames += 1;
-          if (emptyFrames >= HARDER_EMPTY_FRAMES) {
-            fullCanvas.width = vw;
-            fullCanvas.height = vh;
-            fullCtx.drawImage(videoEl, 0, 0, vw, vh);
-            result = tryDecode(fullCanvas, harderReader);
-          } else if (emptyFrames >= FALLBACK_EMPTY_FRAMES) {
-            fullCanvas.width = vw;
-            fullCanvas.height = vh;
-            fullCtx.drawImage(videoEl, 0, 0, vw, vh);
-            result = tryDecode(fullCanvas, reader);
+        const tryDecode = (canvas, r) => {
+          try {
+            return r.decodeFromCanvas(canvas);
+          } catch {
+            return null;
           }
-        } else {
-          emptyFrames = 0;
-        }
+        };
 
-        if (result && !state.stopped) {
-          scanLockRef.current = true;
-          const text = result.getText();
-          const res = await lookup(text);
-          if (!state.stopped) {
-            setLastScan({
-              barcode: text,
-              duplicate: res.duplicate,
-              found: res.found || res.duplicate,
-            });
-            if (res.duplicate) {
-              vibrate([40, 40, 40]);
-            } else if (res.found) {
-              vibrate([120, 60, 120]);
-            } else {
-              vibrate(200);
+        let emptyFrames = 0;
+
+        const loop = async () => {
+          if (cancelled || state.stopped) return;
+          if (scanLockRef.current || videoEl.readyState < 2) {
+            setTimeout(loop, 50);
+            return;
+          }
+
+          const vw = videoEl.videoWidth;
+          const vh = videoEl.videoHeight;
+          if (!vw || !vh) {
+            setTimeout(loop, 60);
+            return;
+          }
+
+          const scale = Math.min(1, MAX_SCAN_WIDTH / vw);
+          scanCanvas.width = Math.max(1, Math.round(vw * scale));
+          scanCanvas.height = Math.max(1, Math.round(vh * scale));
+          scanCtx.drawImage(videoEl, 0, 0, scanCanvas.width, scanCanvas.height);
+
+          let result = tryDecode(scanCanvas, reader);
+          if (!result) {
+            emptyFrames += 1;
+            if (emptyFrames >= HARDER_EMPTY_FRAMES) {
+              fullCanvas.width = vw;
+              fullCanvas.height = vh;
+              fullCtx.drawImage(videoEl, 0, 0, vw, vh);
+              result = tryDecode(fullCanvas, harderReader);
+            } else if (emptyFrames >= FALLBACK_EMPTY_FRAMES) {
+              fullCanvas.width = vw;
+              fullCanvas.height = vh;
+              fullCtx.drawImage(videoEl, 0, 0, vw, vh);
+              result = tryDecode(fullCanvas, reader);
             }
+          } else {
+            emptyFrames = 0;
           }
-          setTimeout(() => {
-            scanLockRef.current = false;
-          }, 1100);
-        }
 
-        setTimeout(loop, 50);
-      };
+          if (result && !state.stopped) {
+            scanLockRef.current = true;
+            const text = result.getText();
+            const res = await lookup(text);
+            if (!state.stopped) {
+              setLastScan({
+                barcode: text,
+                duplicate: res.duplicate,
+                found: res.found || res.duplicate,
+              });
+              if (res.duplicate) {
+                vibrate([40, 40, 40]);
+              } else if (res.found) {
+                vibrate([120, 60, 120]);
+              } else {
+                vibrate(200);
+              }
+            }
+            setTimeout(() => {
+              scanLockRef.current = false;
+            }, 1100);
+          }
 
-      setTimeout(() => loop(), 120);
-    } catch (err) {
-      cameraStateRef.current = null;
-      setCameraError(cameraErrorMessage(err));
-    }
-  }, [lookup]);
+          setTimeout(loop, 50);
+        };
+
+        setTimeout(() => loop(), 120);
+      } catch (err) {
+        if (cancelled) return;
+        cameraStateRef.current = null;
+        setCameraError(cameraErrorMessage(err));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      stopCamera();
+    };
+  }, [cameraOpen, lookup, stopCamera]);
 
   const closeCamera = useCallback(() => {
     setCameraOpen(false);
@@ -359,12 +371,12 @@ export default function TraceSpk() {
             <div className="col-md-4 d-flex gap-2">
               <button
                 type="button"
-                className="btn btn-outline-primary"
-                onClick={startCamera}
+                className={"btn " + (cameraOpen ? "btn-outline-danger" : "btn-outline-primary")}
+                onClick={cameraOpen ? closeCamera : startCamera}
                 title="Scan menggunakan kamera HP"
               >
-                <i className="bi bi-camera me-1" />
-                Scan Kamera
+                <i className={"bi " + (cameraOpen ? "bi-camera-video-off" : "bi-camera") + " me-1"} />
+                {cameraOpen ? "Tutup Kamera" : "Scan Kamera"}
               </button>
               <button type="submit" className="btn btn-primary" disabled={searching}>
                 <i className={"bi " + (searching ? "bi-hourglass-split" : "bi-arrow-right") + " me-1"} />
@@ -376,6 +388,67 @@ export default function TraceSpk() {
       </div>
 
       {error && <div className="alert alert-danger mt-3">{error}</div>}
+
+      {cameraOpen && (
+        <div className="card mt-3">
+          <div className="card-header d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center">
+              <i className="bi bi-camera fs-4 me-2" />
+              <h5 className="mb-0">Scan Kamera</h5>
+              {lastScan && (
+                <span
+                  className={
+                    "trace-scan-badge ms-2 " +
+                    (lastScan.found
+                      ? lastScan.duplicate
+                        ? "trace-scan-badge-dupe"
+                        : "trace-scan-badge-ok"
+                      : "trace-scan-badge-missing")
+                  }
+                >
+                  {lastScan.duplicate
+                    ? "Sudah ada"
+                    : lastScan.found
+                      ? "Ditemukan"
+                      : "Tidak ditemukan"}
+                </span>
+              )}
+            </div>
+            <button className="btn btn-sm btn-outline-secondary" onClick={closeCamera}>
+              <i className="bi bi-x-lg me-1" />
+              Tutup
+            </button>
+          </div>
+          <div className="card-body">
+            <div className="trace-cam-region">
+              <video
+                ref={videoRef}
+                className="trace-cam-video"
+                muted
+                playsInline
+                autoPlay
+              />
+              <div className="trace-cam-frame" />
+            </div>
+            {cameraError && <div className="alert alert-danger py-2 mt-2 mb-0">{cameraError}</div>}
+            {lastScan && (
+              <div className={"trace-scan-result mt-2 " + (lastScan.found ? "ok" : "missing")}>
+                <code>{lastScan.barcode}</code>
+                <span>
+                  {lastScan.duplicate
+                    ? "sudah ada di daftar trace"
+                    : lastScan.found
+                      ? "ditemukan di database"
+                      : "data tidak ditemukan (mungkin di luar " + CACHE_WINDOW_DAYS + " hari terakhir)"}
+                </span>
+              </div>
+            )}
+            <p className="form-text mt-2 mb-0">
+              Arahkan kamera ke barcode produk. Aplikasi tetap membuka kamera untuk scan beruntun.
+            </p>
+          </div>
+        </div>
+      )}
 
       {rows.length > 0 && (
         <div className="card mt-3">
@@ -439,68 +512,6 @@ export default function TraceSpk() {
           </div>
         </div>
       )}
-
-      <div
-        className={"modal-overlay" + (cameraOpen ? "" : " d-none")}
-        onClick={closeCamera}
-      >
-        <div className="modal-content trace-cam-modal" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-header">
-            <h3>Scan Kamera</h3>
-            <div className="modal-header-right">
-              {lastScan && (
-                <span
-                  className={
-                    "trace-scan-badge " +
-                    (lastScan.found
-                      ? lastScan.duplicate
-                        ? "trace-scan-badge-dupe"
-                        : "trace-scan-badge-ok"
-                      : "trace-scan-badge-missing")
-                  }
-                >
-                  {lastScan.duplicate
-                    ? "Sudah ada"
-                    : lastScan.found
-                      ? "Ditemukan"
-                      : "Tidak ditemukan"}
-                </span>
-              )}
-              <button className="modal-close" onClick={closeCamera} title="Tutup">
-                &times;
-              </button>
-            </div>
-          </div>
-          <div className="modal-body">
-            <div className="trace-cam-region">
-              <video
-                ref={videoRef}
-                className="trace-cam-video"
-                muted
-                playsInline
-                autoPlay
-              />
-              <div className="trace-cam-frame" />
-            </div>
-            {cameraError && <div className="alert alert-danger py-2 mt-2 mb-0">{cameraError}</div>}
-            {lastScan && (
-              <div className={"trace-scan-result mt-2 " + (lastScan.found ? "ok" : "missing")}>
-                <code>{lastScan.barcode}</code>
-                <span>
-                  {lastScan.duplicate
-                    ? "sudah ada di daftar trace"
-                    : lastScan.found
-                      ? "ditemukan di database"
-                      : "data tidak ditemukan (mungkin di luar " + CACHE_WINDOW_DAYS + " hari terakhir)"}
-                </span>
-              </div>
-            )}
-            <p className="form-text mt-2 mb-0">
-              Arahkan kamera ke barcode produk. Aplikasi tetap membuka kamera untuk scan beruntun.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
