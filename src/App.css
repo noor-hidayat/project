@@ -3235,73 +3235,60 @@
     display: none;
   }
 
-  .trace-table thead {
+  .trace-scan-card > .card-header {
     display: none;
   }
 
-  .trace-table td:nth-child(1),
-  .trace-table td:nth-child(4),
+  .trace-scan-card .card-body {
+    padding: 12px 14px 14px;
+  }
+
+  .trace-scan-card .form-label {
+    margin-bottom: 4px;
+    font-size: 0.82rem;
+  }
+
+  .trace-scan-card .form-control {
+    padding: 0.4rem 0.6rem;
+  }
+
+  .trace-scan-card .form-control {
+    font-size: 0.9rem;
+  }
+
+  .trace-scan-actions {
+    flex-wrap: wrap;
+  }
+
+  .trace-scan-actions .btn {
+    flex: 1 1 0;
+    font-size: 0.82rem;
+    padding: 0.4rem 0.5rem;
+    white-space: nowrap;
+  }
+
+  .trace-table th:nth-child(5),
   .trace-table td:nth-child(5) {
     display: none;
   }
 
-  .trace-table tbody tr {
-    display: block;
-    position: relative;
-    padding: 10px 44px 10px 12px;
-    margin-bottom: 8px;
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-sm);
-    background: var(--card);
+  .trace-table th,
+  .trace-table td {
+    padding: 8px 8px;
   }
 
-  .trace-table tbody tr:last-child {
-    margin-bottom: 0;
+  .trace-table th:nth-child(2),
+  .trace-table td:nth-child(2) {
+    min-width: 108px;
   }
 
-  .trace-table tbody td {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 3px 0;
-    border: 0;
-    font-size: 0.82rem;
-  }
-
-  .trace-table tbody td::before {
-    content: attr(data-label);
+  .trace-table .cell-mono {
     font-size: 0.68rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: capitalize;
-    flex-shrink: 0;
   }
 
-  .trace-table tbody td:nth-child(2) {
-    justify-content: flex-start;
-    font-size: 0.84rem;
-    font-weight: 700;
-  }
-
-  .trace-table tbody td:nth-child(2)::before {
-    content: "";
-  }
-
-  .trace-table .cell-mono,
   .trace-table .cell-product {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    max-width: none;
-    word-break: break-all;
-    text-align: right;
-  }
-
-  .trace-table .trace-remove {
-    position: absolute;
-    top: 10px;
-    right: 10px;
+    max-width: 116px;
+    font-size: 0.72rem;
   }
 
   .trace-cam-frame {

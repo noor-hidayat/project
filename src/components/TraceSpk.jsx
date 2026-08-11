@@ -388,7 +388,7 @@ export default function TraceSpk() {
       </div>
 
       {!cameraOpen && (
-        <div className="card mt-3">
+        <div className="card trace-scan-card mt-3">
           <div className="card-header d-flex align-items-center">
             <i className="bi bi-upc-scan fs-3 me-2" />
             <h5 className="mb-0">Scan / Input Barcode</h5>
@@ -532,19 +532,19 @@ export default function TraceSpk() {
                   <tr key={r.barcode + "-" + i}>
                     <td className="cell-num">{i + 1}</td>
                     <td className="cell-mono">{r.barcode}</td>
-                    <td className="cell-product" title={r.product_name || r.product_code || "-"} data-label="Produk">
+                    <td className="cell-product" title={r.product_name || r.product_code || "-"}>
                       {r.product_name || r.product_code || "-"}
                     </td>
                     <td title={r.spk || "-"}>{r.spk || "-"}</td>
                     <td title={r.operator || "-"}>{r.operator || "-"}</td>
-                    <td data-label="Tanggal">{fmtProdDate(r.production_date)}</td>
-                    <td data-label="Shift">
+                    <td>{fmtProdDate(r.production_date)}</td>
+                    <td>
                       {r.shift}
                       {(r.bahan_sisa === true || r.bahan_sisa === "true") && (
                         <span className="trace-sisa-badge">sisa</span>
                       )}
                     </td>
-                    <td className="cell-mono" data-label="Trx">{r.trx_code || "-"}</td>
+                    <td className="cell-mono">{r.trx_code || "-"}</td>
                     <td>
                       <button
                         className="trace-remove"
