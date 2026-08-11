@@ -3150,6 +3150,18 @@
   font-size: 0.82rem;
   padding: 8px 12px;
   border-radius: 8px;
+  animation: trace-result-pop 0.28s ease;
+}
+
+@keyframes trace-result-pop {
+  0% {
+    opacity: 0.3;
+    transform: translateY(4px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .trace-scan-result code {

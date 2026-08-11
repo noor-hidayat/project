@@ -63,6 +63,46 @@ function vibrate(pattern) {
   }
 }
 
+let audioCtx = null;
+
+function ensureAudioCtx() {
+  if (typeof window === "undefined") return null;
+  if (!audioCtx) {
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) return null;
+    try {
+      audioCtx = new Ctor();
+    } catch {
+      return null;
+    }
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume().then(() => {}, () => {});
+  }
+  return audioCtx;
+}
+
+function beep(freq = 1000, duration = 150, type = "sine", delay = 0) {
+  const ctx = ensureAudioCtx();
+  if (!ctx) return;
+  try {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    const start = ctx.currentTime + delay;
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.4, start + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration / 1000);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + duration / 1000 + 0.03);
+  } catch {
+    // abaikan
+  }
+}
+
 export default function TraceSpk() {
   const [barcode, setBarcode] = useState("");
   const [rows, setRows] = useState([]);
@@ -192,6 +232,7 @@ export default function TraceSpk() {
   );
 
   const startCamera = useCallback(() => {
+    ensureAudioCtx();
     setCameraError("");
     setLastScan(null);
     setCameraOpen(true);
@@ -286,6 +327,8 @@ export default function TraceSpk() {
           if (result && !state.stopped) {
             scanLockRef.current = true;
             const text = result.getText();
+            vibrate(30);
+            beep(880, 50);
             const res = await lookup(text);
             if (!state.stopped) {
               setLastScan({
@@ -295,10 +338,14 @@ export default function TraceSpk() {
               });
               if (res.duplicate) {
                 vibrate([40, 40, 40]);
+                beep(760, 120);
               } else if (res.found) {
                 vibrate([120, 60, 120]);
+                beep(1046, 140);
+                beep(1568, 180, "sine", 0.14);
               } else {
                 vibrate(200);
+                beep(220, 320, "sawtooth");
               }
             }
             setTimeout(() => {
