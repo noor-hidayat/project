@@ -112,12 +112,14 @@ export default function TraceSpk() {
   const [cameraError, setCameraError] = useState("");
   const [lastScan, setLastScan] = useState(null);
   const [cacheMap, setCacheMap] = useState(null);
+  const [toast, setToast] = useState(null);
   const inputRef = useRef(null);
   const videoRef = useRef(null);
   const scanLockRef = useRef(false);
   const cameraStateRef = useRef(null);
   const rowsRef = useRef([]);
   const cacheMapRef = useRef(null);
+  const toastTimerRef = useRef(null);
 
   useEffect(() => {
     rowsRef.current = rows;
@@ -126,6 +128,12 @@ export default function TraceSpk() {
   useEffect(() => {
     cacheMapRef.current = cacheMap;
   }, [cacheMap]);
+
+  const showToast = useCallback((message, type = "ok") => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ message, type, key: Date.now() });
+    toastTimerRef.current = setTimeout(() => setToast(null), 2600);
+  }, []);
 
   const refreshCache = useCallback(async () => {
     const data = await fetchRecentBarcodes();
@@ -200,7 +208,7 @@ export default function TraceSpk() {
       setSearching(false);
 
       if (err) {
-        setError("Gagal memuat data: " + err.message);
+        showToast("Gagal memuat data: " + err.message, "error");
         return { duplicate: false, added: false, found: false };
       }
 
@@ -209,10 +217,10 @@ export default function TraceSpk() {
         addRow(rec, trimmed);
         return { duplicate: false, added: true, found: true };
       }
-      setError("Data tidak ditemukan: " + trimmed);
+      showToast("Data tidak ditemukan: " + trimmed, "error");
       return { duplicate: false, added: false, found: false };
     },
-    [addRow]
+    [addRow, showToast]
   );
 
   const removeRow = useCallback((code) => {
@@ -225,10 +233,10 @@ export default function TraceSpk() {
       setError("");
       const res = await lookup(barcode);
       if (res.added) setBarcode("");
-      if (res.duplicate) setError("Barcode sudah ada di daftar trace.");
+      if (res.duplicate) showToast("Barcode sudah ada di daftar trace.", "warn");
       inputRef.current?.focus();
     },
-    [barcode, lookup]
+    [barcode, lookup, showToast]
   );
 
   const startCamera = useCallback(() => {
@@ -339,13 +347,16 @@ export default function TraceSpk() {
               if (res.duplicate) {
                 vibrate([40, 40, 40]);
                 beep(760, 120);
+                showToast("Barcode sudah ada di daftar trace", "warn");
               } else if (res.found) {
                 vibrate([120, 60, 120]);
                 beep(1046, 140);
                 beep(1568, 180, "sine", 0.14);
+                showToast("Barcode ditemukan", "ok");
               } else {
                 vibrate(200);
                 beep(220, 320, "sawtooth");
+                showToast("Data tidak ditemukan", "error");
               }
             }
             setTimeout(() => {
@@ -368,7 +379,7 @@ export default function TraceSpk() {
       cancelled = true;
       stopCamera();
     };
-  }, [cameraOpen, lookup, stopCamera]);
+  }, [cameraOpen, lookup, stopCamera, showToast]);
 
   const closeCamera = useCallback(() => {
     setCameraOpen(false);
@@ -379,12 +390,7 @@ export default function TraceSpk() {
   return (
     <div className="trace-page">
       <div className="trace-page-head">
-        <div>
-          <h2>Trace SPK</h2>
-          <p className="summary-subtitle">
-            Cari tahu asal barcode: nomor SPK, produk, dan operator yang mencatatnya
-          </p>
-        </div>
+        <h2>Trace SPK</h2>
       </div>
 
       {!cameraOpen && (
@@ -480,21 +486,6 @@ export default function TraceSpk() {
               <div className="trace-cam-frame" />
             </div>
             {cameraError && <div className="alert alert-danger py-2 mt-2 mb-0">{cameraError}</div>}
-            {lastScan && (
-              <div className={"trace-scan-result mt-2 " + (lastScan.found ? "ok" : "missing")}>
-                <code>{lastScan.barcode}</code>
-                <span>
-                  {lastScan.duplicate
-                    ? "sudah ada di daftar trace"
-                    : lastScan.found
-                      ? "ditemukan di database"
-                      : "data tidak ditemukan (mungkin di luar " + CACHE_WINDOW_DAYS + " hari terakhir)"}
-                </span>
-              </div>
-            )}
-            <p className="form-text mt-2 mb-0">
-              Arahkan kamera ke barcode produk. Aplikasi tetap membuka kamera untuk scan beruntun.
-            </p>
           </div>
         </div>
       )}
@@ -559,6 +550,12 @@ export default function TraceSpk() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div key={toast.key} className={"trace-toast " + toast.type}>
+          {toast.message}
         </div>
       )}
     </div>

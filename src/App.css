@@ -3111,7 +3111,7 @@
   left: 2%;
   right: 2%;
   top: 50%;
-  height: 56px;
+  height: 96px;
   transform: translateY(-50%);
   border: 2px solid rgba(255, 255, 255, 0.75);
   border-radius: 8px;
@@ -3145,45 +3145,49 @@
   border: 1px solid rgba(180, 83, 9, 0.3);
 }
 
-.trace-scan-result {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.82rem;
-  padding: 8px 12px;
-  border-radius: 8px;
-  animation: trace-result-pop 0.28s ease;
+.trace-toast {
+  position: fixed;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+  animation: trace-toast-in 0.22s ease;
 }
 
-@keyframes trace-result-pop {
+.trace-toast.ok {
+  color: #15803d;
+  background: #dcfce7;
+  border: 1px solid rgba(22, 163, 74, 0.3);
+}
+
+.trace-toast.warn {
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid rgba(180, 83, 9, 0.3);
+}
+
+.trace-toast.error {
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+@keyframes trace-toast-in {
   0% {
-    opacity: 0.3;
-    transform: translateY(4px) scale(0.97);
+    opacity: 0;
+    transform: translate(-50%, -8px);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate(-50%, 0);
   }
-}
-
-.trace-scan-result code {
-  font-size: 0.78rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 60%;
-}
-
-.trace-scan-result.ok {
-  color: #16a34a;
-  background: #f0fdf4;
-  border: 1px solid rgba(22, 163, 74, 0.2);
-}
-
-.trace-scan-result.missing {
-  color: #dc2626;
-  background: #fef2f2;
-  border: 1px solid rgba(220, 38, 38, 0.2);
 }
 
 /* ===== Trace SPK — mobile ===== */
@@ -3199,10 +3203,6 @@
 
   .trace-page-head h2 {
     font-size: 1.05rem;
-  }
-
-  .trace-page-head .summary-subtitle {
-    font-size: 0.8rem;
   }
 
   .trace-scan-actions {
@@ -3235,10 +3235,6 @@
 }
 
 @media (max-width: 600px) {
-  .trace-page-head .summary-subtitle {
-    display: none;
-  }
-
   .trace-scan-card > .card-header {
     display: none;
   }
@@ -3296,20 +3292,8 @@
   }
 
   .trace-cam-frame {
-    height: 44px;
+    height: 72px;
     left: 2%;
     right: 2%;
-  }
-
-  .trace-scan-result {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-  }
-
-  .trace-scan-result code {
-    max-width: 100%;
-    white-space: normal;
-    word-break: break-all;
   }
 }
