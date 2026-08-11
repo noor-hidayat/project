@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { BrowserMultiFormatOneDReader } from "@zxing/browser";
+import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import { supabase } from "../lib/supabaseClient";
 import {
   CACHE_FIELDS,
@@ -11,7 +12,21 @@ import {
   fetchRecentBarcodes,
 } from "../lib/traceCache";
 
-const CAMERA_REGION_ID = "trace-camera-region";
+const SCAN_HINTS = new Map([
+  [
+    DecodeHintType.POSSIBLE_FORMATS,
+    [
+      BarcodeFormat.CODE_128,
+      BarcodeFormat.CODE_39,
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.EAN_8,
+      BarcodeFormat.UPC_A,
+      BarcodeFormat.UPC_E,
+      BarcodeFormat.ITF,
+    ],
+  ],
+  [DecodeHintType.TRY_HARDER, true],
+]);
 
 function fmtProdDate(d) {
   return d?.split("-").reverse().join("-") || "-";
@@ -28,6 +43,9 @@ function cameraErrorMessage(err) {
   if (name === "NotReadableError" || name === "TrackStartError") {
     return "Kamera sedang dipakai aplikasi lain. Tutup aplikasi tersebut lalu coba lagi.";
   }
+  if (name === "OverconstrainedError") {
+    return "Kamera tidak mendukung mode yang diminta. Coba perbarui browser Anda.";
+  }
   return "Gagal mengaktifkan kamera: " + (err?.message || "kesalahan tidak diketahui");
 }
 
@@ -41,8 +59,9 @@ export default function TraceSpk() {
   const [lastScan, setLastScan] = useState(null);
   const [cacheMap, setCacheMap] = useState(null);
   const inputRef = useRef(null);
-  const scannerRef = useRef(null);
-  const cameraOpenRef = useRef(false);
+  const videoRef = useRef(null);
+  const scanLockRef = useRef(false);
+  const cameraStateRef = useRef(null);
   const rowsRef = useRef([]);
   const cacheMapRef = useRef(null);
 
@@ -53,10 +72,6 @@ export default function TraceSpk() {
   useEffect(() => {
     cacheMapRef.current = cacheMap;
   }, [cacheMap]);
-
-  useEffect(() => {
-    cameraOpenRef.current = cameraOpen;
-  }, [cameraOpen]);
 
   const refreshCache = useCallback(async () => {
     const data = await fetchRecentBarcodes();
@@ -88,20 +103,16 @@ export default function TraceSpk() {
     };
   }, [refreshCache]);
 
-  const stopCamera = useCallback(async () => {
-    const scanner = scannerRef.current;
-    scannerRef.current = null;
-    if (scanner) {
-      try {
-        await scanner.stop();
-      } catch {
-        // scanner belum sempat start — abaikan
-      }
+  const stopCamera = useCallback(() => {
+    const state = cameraStateRef.current;
+    cameraStateRef.current = null;
+    if (!state) return;
+    state.stopped = true;
+    if (state.stream) {
+      state.stream.getTracks().forEach((track) => track.stop());
     }
-    try {
-      Html5Qrcode.clear();
-    } catch {
-      // region kosong
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
   }, []);
 
@@ -167,51 +178,79 @@ export default function TraceSpk() {
   );
 
   const startCamera = useCallback(async () => {
+    if (cameraStateRef.current) return;
     setCameraOpen(true);
     setCameraError("");
     setLastScan(null);
 
-    const scanner = new Html5Qrcode(CAMERA_REGION_ID);
-    scannerRef.current = scanner;
+    const videoEl = videoRef.current;
+    if (!videoEl) {
+      setCameraError("Elemen kamera belum siap.");
+      return;
+    }
+
+    const state = { stopped: false, stream: null };
+    cameraStateRef.current = state;
 
     try {
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 120 } },
-        async (decodedText) => {
-          try {
-            scanner.pause(true);
-          } catch {
-            // abaikan
-          }
-          const res = await lookup(decodedText);
-          setLastScan({
-            barcode: decodedText,
-            duplicate: res.duplicate,
-            found: res.found || res.duplicate,
-          });
-          setCameraError("");
-          setTimeout(() => {
-            if (cameraOpenRef.current && scannerRef.current === scanner) {
-              try {
-                scanner.resume();
-              } catch {
-                // abaikan
-              }
-            }
-          }, 900);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
         },
-        () => {}
-      );
+        audio: false,
+      });
+      if (state.stopped) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      state.stream = stream;
+      videoEl.srcObject = stream;
+      await videoEl.play();
+
+      const reader = new BrowserMultiFormatOneDReader(SCAN_HINTS);
+
+      const loop = async () => {
+        if (state.stopped) return;
+        if (scanLockRef.current || videoEl.readyState < 2) {
+          setTimeout(loop, 150);
+          return;
+        }
+        try {
+          const result = await reader.decodeOnceFromVideoElement(videoEl);
+          if (result && !state.stopped) {
+            scanLockRef.current = true;
+            const text = result.getText();
+            const res = await lookup(text);
+            if (!state.stopped) {
+              setLastScan({
+                barcode: text,
+                duplicate: res.duplicate,
+                found: res.found || res.duplicate,
+              });
+            }
+            setTimeout(() => {
+              scanLockRef.current = false;
+            }, 1200);
+          }
+        } catch {
+          // frame tanpa/berisi barcode terbaca sebagian — lanjut
+        }
+        setTimeout(loop, 120);
+      };
+
+      setTimeout(() => loop(), 250);
     } catch (err) {
+      cameraStateRef.current = null;
       setCameraError(cameraErrorMessage(err));
     }
   }, [lookup]);
 
-  const closeCamera = useCallback(async () => {
+  const closeCamera = useCallback(() => {
     setCameraOpen(false);
     setLastScan(null);
-    await stopCamera();
+    stopCamera();
   }, [stopCamera]);
 
   return (
@@ -369,7 +408,16 @@ export default function TraceSpk() {
             </div>
           </div>
           <div className="modal-body">
-            <div id={CAMERA_REGION_ID} className="trace-cam-region" />
+            <div className="trace-cam-region">
+              <video
+                ref={videoRef}
+                className="trace-cam-video"
+                muted
+                playsInline
+                autoPlay
+              />
+              <div className="trace-cam-frame" />
+            </div>
             {cameraError && <div className="alert alert-danger py-2 mt-2 mb-0">{cameraError}</div>}
             {lastScan && (
               <div className={"trace-scan-result mt-2 " + (lastScan.found ? "ok" : "missing")}>
