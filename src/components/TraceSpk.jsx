@@ -29,9 +29,41 @@ const SCAN_HINTS_HARDER = new Map([
   [DecodeHintType.TRY_HARDER, true],
 ]);
 
-const MAX_SCAN_WIDTH = 420;
+const ROI_BAND = 0.34;
+const ROI_TARGET_W = 380;
 const FALLBACK_EMPTY_FRAMES = 6;
 const HARDER_EMPTY_FRAMES = 12;
+const FRAME_INTERVAL_MS = 40;
+const SCAN_COOLDOWN_MS = 700;
+
+async function openBestCamera() {
+  const prefer = () =>
+    navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        focusMode: { ideal: "continuous" },
+        advanced: [{ focusMode: "continuous" }],
+      },
+      audio: false,
+    });
+  try {
+    return await prefer();
+  } catch (err) {
+    if (!err || !["OverconstrainedError", "TypeError", "NotFoundError"].includes(err.name)) {
+      throw err;
+    }
+    return navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+      },
+      audio: false,
+    });
+  }
+}
 
 function fmtProdDate(d) {
   return d?.split("-").reverse().join("-") || "-";
@@ -120,6 +152,21 @@ export default function TraceSpk() {
   const rowsRef = useRef([]);
   const cacheMapRef = useRef(null);
   const toastTimerRef = useRef(null);
+  const [debugOn, setDebugOn] = useState(false);
+  const [debugStats, setDebugStats] = useState(null);
+  const scanStatsRef = useRef({
+    camInitMs: 0,
+    resW: 0,
+    resH: 0,
+    attempts: 0,
+    decodes: 0,
+    decodeSumMs: 0,
+    detectMs: 0,
+    backendCount: 0,
+    backendSumMs: 0,
+    resultMs: 0,
+  });
+  const lastScannedRef = useRef({ code: "", at: 0 });
 
   useEffect(() => {
     rowsRef.current = rows;
@@ -128,6 +175,13 @@ export default function TraceSpk() {
   useEffect(() => {
     cacheMapRef.current = cacheMap;
   }, [cacheMap]);
+
+  useEffect(
+    () => () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    },
+    []
+  );
 
   const showToast = useCallback((message, type = "ok") => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -241,6 +295,19 @@ export default function TraceSpk() {
 
   const startCamera = useCallback(() => {
     ensureAudioCtx();
+    scanStatsRef.current = {
+      camInitMs: 0,
+      resW: 0,
+      resH: 0,
+      attempts: 0,
+      decodes: 0,
+      decodeSumMs: 0,
+      detectMs: 0,
+      backendCount: 0,
+      backendSumMs: 0,
+      resultMs: 0,
+    };
+    setDebugStats(null);
     setCameraError("");
     setLastScan(null);
     setCameraOpen(true);
@@ -256,26 +323,28 @@ export default function TraceSpk() {
     }
 
     let cancelled = false;
+    let statsTimer = null;
+    const t0 = performance.now();
     const state = { stopped: false, stream: null };
     cameraStateRef.current = state;
 
     (async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "environment",
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-          },
-          audio: false,
-        });
+        const stream = await openBestCamera();
         if (cancelled || state.stopped) {
-          stream.getTracks().forEach((t) => t.stop());
+          stream.getTracks().forEach((track) => track.stop());
           return;
         }
         state.stream = stream;
         videoEl.srcObject = stream;
         await videoEl.play();
+
+        const track = stream.getVideoTracks()[0];
+        const settings = track ? track.getSettings() : {};
+        const stats = scanStatsRef.current;
+        stats.camInitMs = Math.round(performance.now() - t0);
+        stats.resW = settings.width || videoEl.videoWidth || 0;
+        stats.resH = settings.height || videoEl.videoHeight || 0;
 
         const reader = new BrowserMultiFormatOneDReader(SCAN_HINTS);
         const harderReader = new BrowserMultiFormatOneDReader(SCAN_HINTS_HARDER);
@@ -294,11 +363,12 @@ export default function TraceSpk() {
         };
 
         let emptyFrames = 0;
+        let prevAttemptAt = 0;
 
         const loop = async () => {
           if (cancelled || state.stopped) return;
           if (scanLockRef.current || videoEl.readyState < 2) {
-            setTimeout(loop, 50);
+            setTimeout(loop, FRAME_INTERVAL_MS);
             return;
           }
 
@@ -309,12 +379,22 @@ export default function TraceSpk() {
             return;
           }
 
-          const scale = Math.min(1, MAX_SCAN_WIDTH / vw);
-          scanCanvas.width = Math.max(1, Math.round(vw * scale));
-          scanCanvas.height = Math.max(1, Math.round(vh * scale));
-          scanCtx.drawImage(videoEl, 0, 0, scanCanvas.width, scanCanvas.height);
+          const attemptAt = performance.now();
+          const statsNow = scanStatsRef.current;
+          statsNow.attempts += 1;
 
+          const bandH = Math.max(2, Math.round(vh * ROI_BAND));
+          const top = Math.round((vh - bandH) / 2);
+          const scale = Math.min(1, ROI_TARGET_W / vw);
+          scanCanvas.width = Math.max(1, Math.round(vw * scale));
+          scanCanvas.height = Math.max(1, Math.round(bandH * scale));
+          scanCtx.drawImage(videoEl, 0, top, vw, bandH, 0, 0, scanCanvas.width, scanCanvas.height);
+
+          const d0 = performance.now();
           let result = tryDecode(scanCanvas, reader);
+          statsNow.decodes += 1;
+          statsNow.decodeSumMs += performance.now() - d0;
+
           if (!result) {
             emptyFrames += 1;
             if (emptyFrames >= HARDER_EMPTY_FRAMES && emptyFrames % 4 === 0) {
@@ -332,27 +412,48 @@ export default function TraceSpk() {
             emptyFrames = 0;
           }
 
+          const d1 = performance.now();
+
           if (result && !state.stopped) {
-            scanLockRef.current = true;
             const text = result.getText();
-            beep(880, 50);
+            const last = lastScannedRef.current;
+            const now = performance.now();
+            if (last && last.code === text && now - last.at < SCAN_COOLDOWN_MS * 2) {
+              setTimeout(() => {
+                scanLockRef.current = false;
+              }, SCAN_COOLDOWN_MS);
+              setTimeout(loop, FRAME_INTERVAL_MS);
+              return;
+            }
+            lastScannedRef.current = { code: text, at: now };
+
+            scanLockRef.current = true;
+            statsNow.detectMs = Math.round(prevAttemptAt ? d1 - prevAttemptAt : d1 - attemptAt);
+            statsNow.resultMs = d1 - attemptAt;
+
+            vibrate([180, 60, 180]);
+            beep(880, 90);
+            setLastScan({ barcode: text, duplicate: 0, found: true });
+
+            const b0 = performance.now();
             const res = await lookup(text);
+            const b1 = performance.now();
+            statsNow.backendCount += 1;
+            statsNow.backendSumMs += b1 - b0;
+
             if (!state.stopped) {
-              setLastScan({
-                barcode: text,
-                duplicate: res.duplicate,
-                found: res.found || res.duplicate,
-              });
               if (res.duplicate) {
-                vibrate([120, 60, 120]);
+                setLastScan({ barcode: text, duplicate: 1, found: true });
+                vibrate([120, 50, 120]);
                 beep(760, 120);
                 showToast("Barcode sudah ada di daftar trace", "warn");
               } else if (res.found) {
-                vibrate([250, 80, 250, 80, 250]);
+                setLastScan({ barcode: text, duplicate: 0, found: true });
                 beep(1046, 140);
                 beep(1568, 180, "sine", 0.14);
                 showToast("Barcode ditemukan", "ok");
               } else {
+                setLastScan({ barcode: text, duplicate: 0, found: false });
                 vibrate([280, 90, 280]);
                 beep(220, 320, "sawtooth");
                 showToast("Data tidak ditemukan", "error");
@@ -360,13 +461,32 @@ export default function TraceSpk() {
             }
             setTimeout(() => {
               scanLockRef.current = false;
-            }, 700);
+            }, SCAN_COOLDOWN_MS);
           }
 
-          setTimeout(loop, 50);
+          prevAttemptAt = attemptAt;
+          const decodeMs = d1 - d0;
+          const delay = decodeMs > 28 ? 80 : FRAME_INTERVAL_MS;
+          setTimeout(loop, delay);
         };
 
         setTimeout(() => loop(), 120);
+
+        statsTimer = setInterval(() => {
+          if (cancelled) return;
+          const s = scanStatsRef.current;
+          setDebugStats({
+            camInitMs: s.camInitMs,
+            resW: s.resW,
+            resH: s.resH,
+            fps: s.attempts,
+            avgDecodeMs: s.decodes ? +(s.decodeSumMs / s.decodes).toFixed(1) : 0,
+            detectMs: s.detectMs,
+            backendMs: s.backendCount ? +(s.backendSumMs / s.backendCount).toFixed(1) : 0,
+            resultMs: s.resultMs ? +s.resultMs.toFixed(1) : 0,
+          });
+          s.attempts = 0;
+        }, 1000);
       } catch (err) {
         if (cancelled) return;
         cameraStateRef.current = null;
@@ -376,6 +496,7 @@ export default function TraceSpk() {
 
     return () => {
       cancelled = true;
+      if (statsTimer) clearInterval(statsTimer);
       stopCamera();
     };
   }, [cameraOpen, lookup, stopCamera, showToast]);
@@ -468,6 +589,10 @@ export default function TraceSpk() {
                 </span>
               )}
             </div>
+            <button className="btn btn-sm btn-outline-secondary" onClick={() => setDebugOn((v) => !v)}>
+              <i className="bi bi-graph-up me-1" />
+              Debug
+            </button>
             <button className="btn btn-sm btn-outline-secondary" onClick={closeCamera}>
               <i className="bi bi-x-lg me-1" />
               Tutup
@@ -485,6 +610,40 @@ export default function TraceSpk() {
               <div className="trace-cam-frame" />
             </div>
             {cameraError && <div className="alert alert-danger py-2 mt-2 mb-0">{cameraError}</div>}
+            {debugOn && debugStats && (
+              <div className="debug-panel">
+                <div>
+                  <span>Init kamera</span>
+                  <b>{debugStats.camInitMs} ms</b>
+                </div>
+                <div>
+                  <span>Resolusi</span>
+                  <b>
+                    {debugStats.resW}×{debugStats.resH}
+                  </b>
+                </div>
+                <div>
+                  <span>Decode FPS</span>
+                  <b>{debugStats.fps}</b>
+                </div>
+                <div>
+                  <span>Rata-rata decode</span>
+                  <b>{debugStats.avgDecodeMs} ms</b>
+                </div>
+                <div>
+                  <span>Muncul → terdeteksi</span>
+                  <b>{debugStats.detectMs} ms</b>
+                </div>
+                <div>
+                  <span>Backend</span>
+                  <b>{debugStats.backendMs} ms</b>
+                </div>
+                <div>
+                  <span>Scan → hasil</span>
+                  <b>{debugStats.resultMs} ms</b>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

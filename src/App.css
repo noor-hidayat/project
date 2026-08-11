@@ -3119,6 +3119,31 @@
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.38);
 }
 
+.debug-panel {
+  max-width: 420px;
+  margin: 10px auto 0;
+  padding: 8px 12px;
+  font-size: 0.74rem;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 14px;
+}
+
+.debug-panel > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.debug-panel b {
+  color: #0f172a;
+  font-weight: 600;
+}
+
 .trace-scan-badge {
   font-size: 0.72rem;
   font-weight: 600;
