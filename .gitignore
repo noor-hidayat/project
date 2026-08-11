@@ -13,6 +13,9 @@ dist-ssr
 *.local
 .env
 
+# Rust / wasm-pack build artifacts
+scanner-wasm/target/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
