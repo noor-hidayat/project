@@ -29,7 +29,7 @@ const SCAN_HINTS_HARDER = new Map([
   [DecodeHintType.TRY_HARDER, true],
 ]);
 
-const MAX_SCAN_WIDTH = 520;
+const MAX_SCAN_WIDTH = 420;
 const FALLBACK_EMPTY_FRAMES = 6;
 const HARDER_EMPTY_FRAMES = 12;
 
@@ -264,8 +264,8 @@ export default function TraceSpk() {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: "environment",
-            width: { ideal: 960 },
-            height: { ideal: 720 },
+            width: { ideal: 640 },
+            height: { ideal: 480 },
           },
           audio: false,
         });
@@ -317,12 +317,12 @@ export default function TraceSpk() {
           let result = tryDecode(scanCanvas, reader);
           if (!result) {
             emptyFrames += 1;
-            if (emptyFrames >= HARDER_EMPTY_FRAMES) {
+            if (emptyFrames >= HARDER_EMPTY_FRAMES && emptyFrames % 4 === 0) {
               fullCanvas.width = vw;
               fullCanvas.height = vh;
               fullCtx.drawImage(videoEl, 0, 0, vw, vh);
               result = tryDecode(fullCanvas, harderReader);
-            } else if (emptyFrames >= FALLBACK_EMPTY_FRAMES) {
+            } else if (emptyFrames >= FALLBACK_EMPTY_FRAMES && emptyFrames % 3 === 0) {
               fullCanvas.width = vw;
               fullCanvas.height = vh;
               fullCtx.drawImage(videoEl, 0, 0, vw, vh);
@@ -335,7 +335,7 @@ export default function TraceSpk() {
           if (result && !state.stopped) {
             scanLockRef.current = true;
             const text = result.getText();
-            vibrate(30);
+            vibrate(80);
             beep(880, 50);
             const res = await lookup(text);
             if (!state.stopped) {
@@ -345,23 +345,23 @@ export default function TraceSpk() {
                 found: res.found || res.duplicate,
               });
               if (res.duplicate) {
-                vibrate([40, 40, 40]);
+                vibrate([80, 50, 80]);
                 beep(760, 120);
                 showToast("Barcode sudah ada di daftar trace", "warn");
               } else if (res.found) {
-                vibrate([120, 60, 120]);
+                vibrate([180, 80, 180]);
                 beep(1046, 140);
                 beep(1568, 180, "sine", 0.14);
                 showToast("Barcode ditemukan", "ok");
               } else {
-                vibrate(200);
+                vibrate(300);
                 beep(220, 320, "sawtooth");
                 showToast("Data tidak ditemukan", "error");
               }
             }
             setTimeout(() => {
               scanLockRef.current = false;
-            }, 1100);
+            }, 700);
           }
 
           setTimeout(loop, 50);
