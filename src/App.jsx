@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react";
 import { parseBarcode, generateBarcodeRange, validateQty } from "./lib/barcodeParser";
 import { getTodayDDMMYY } from "./lib/dateUtils";
 import { supabase } from "./lib/supabaseClient";
@@ -14,6 +14,9 @@ import LoginPage from "./components/LoginPage";
 import ChangePasswordModal from "./components/ChangePasswordModal";
 import logo from "./assets/logo.png";
 import "./App.css";
+
+const preloadTrace = () => import("./components/TraceSpk");
+const TraceSpk = lazy(preloadTrace);
 
 const STORAGE_KEY = "barcode_app_user";
 
@@ -66,6 +69,7 @@ const NAV_ITEMS = [
   { view: "scan", label: "Scan Barcode", icon: "bi-upc-scan", show: (u) => canInput(u) || SUPERVISOR_ROLES.includes(u?.role) },
   { view: "wip", label: "Input WIP", icon: "bi-boxes", show: canAccessWip },
   { view: "wip-history", label: "Riwayat WIP", icon: "bi-clock-history", show: canAccessWip },
+  { view: "trace", label: "Trace SPK", icon: "bi-search", show: (u) => !!u },
   { view: "history", label: "Riwayat", icon: "bi-clock-history", show: canViewHistory },
   { view: "summary", label: "Ringkasan", icon: "bi-bar-chart-line", show: canViewHistory },
   { view: "users", label: "Kelola User", icon: "bi-people", show: canManageUsers },
@@ -76,6 +80,7 @@ const VIEW_TITLES = {
   scan: "Scan Barcode",
   wip: "Input WIP",
   "wip-history": "Riwayat WIP",
+  trace: "Trace SPK",
   history: "Riwayat Transaksi",
   summary: "Ringkasan Harian",
   users: "Kelola User",
@@ -139,6 +144,10 @@ function App() {
   const [generated, setGenerated] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+
+  useEffect(() => {
+    preloadTrace();
+  }, []);
 
   const todayLabel = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
@@ -435,10 +444,14 @@ function App() {
                 </div>
               </div>
             )
-          ) : view === "wip" ? (
+) : view === "wip" ? (
             <Wip user={user} />
           ) : view === "wip-history" ? (
             <WipHistory />
+          ) : view === "trace" ? (
+            <Suspense fallback={<div className="status status-loading">Memuat Trace SPK...</div>}>
+              <TraceSpk />
+            </Suspense>
           ) : view === "history" ? (
             <TransactionHistory
               canEdit={canEditTransactions(user)}

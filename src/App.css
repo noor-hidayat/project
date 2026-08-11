@@ -3015,3 +3015,139 @@
     padding: 1px 0;
   }
 }
+
+/* ===== Trace SPK ===== */
+.trace-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.trace-page-head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.trace-summary-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-light);
+  border: 1px solid rgba(35, 41, 91, 0.15);
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  margin-left: 10px;
+}
+
+.trace-sisa-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid rgba(180, 83, 9, 0.25);
+  padding: 1px 7px;
+  border-radius: 999px;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.trace-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--card-border);
+  border-radius: 7px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.trace-remove:hover {
+  color: var(--error);
+  background: var(--error-bg);
+  border-color: var(--error-border);
+}
+
+.trace-cam-modal {
+  max-width: 460px;
+}
+
+.trace-cam-region {
+  border: 2px dashed var(--card-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0f172a;
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trace-cam-region #trace-camera-region {
+  width: 100%;
+}
+
+.trace-scan-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.trace-scan-badge-ok {
+  color: #16a34a;
+  background: #dcfce7;
+  border: 1px solid rgba(22, 163, 74, 0.3);
+}
+
+.trace-scan-badge-missing {
+  color: #dc2626;
+  background: #fee2e2;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.trace-scan-badge-dupe {
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid rgba(180, 83, 9, 0.3);
+}
+
+.trace-scan-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.trace-scan-result code {
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60%;
+}
+
+.trace-scan-result.ok {
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid rgba(22, 163, 74, 0.2);
+}
+
+.trace-scan-result.missing {
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
