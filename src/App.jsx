@@ -251,9 +251,7 @@ function App() {
       .single();
     if (product) productName = product.name;
 
-    const shiftMapped = bahanSisa
-      ? formShift
-      : (barcodeShift === "01" ? "01" : "02");
+    const shiftMapped = formShift;
 
     const { data: existing } = await supabase
       .from("scan_logs")

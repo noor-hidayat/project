@@ -3,8 +3,6 @@ import { parseBarcode } from "../lib/barcodeParser";
 import {
   ddmmyyToDDMMYYYY,
   ddmmyyToDateValue,
-  getTodayDDMMYY,
-  getTodayShift,
 } from "../lib/dateUtils";
 
 function ddmmyyFromDateValue(dateVal) {
@@ -37,10 +35,6 @@ export default function ScanForm({
 
   useEffect(() => {
     barcodeRef.current?.focus();
-    const today = getTodayDDMMYY();
-    setDateRaw(today);
-    setDateText(today);
-    setShift(getTodayShift());
   }, []);
 
   const handleBarcodeChange = useCallback((value) => {
@@ -49,31 +43,14 @@ export default function ScanForm({
     if (parsed) {
       setBarcodeDateInfo(parsed.productionDate);
       setBarcodeShiftInfo(parsed.shift);
-      if (!bahanSisa) {
-        setDateRaw(parsed.productionDate);
-        setDateText(ddmmyyToDDMMYYYY(parsed.productionDate));
-        setShift(parsed.shift === "01" ? "01" : "02");
-      }
     } else {
       setBarcodeDateInfo(null);
       setBarcodeShiftInfo(null);
     }
-  }, [bahanSisa]);
+  }, []);
 
   function toggleBahanSisa(checked) {
     setBahanSisa(checked);
-    if (checked) {
-      setDateRaw("");
-      setDateText("");
-      setShift("");
-    } else {
-      const parsed = parseBarcode(barcode);
-      if (parsed) {
-        setDateRaw(parsed.productionDate);
-        setDateText(ddmmyyToDDMMYYYY(parsed.productionDate));
-        setShift(parsed.shift === "01" ? "01" : "02");
-      }
-    }
   }
 
   function handleDateFocus() {
@@ -82,17 +59,14 @@ export default function ScanForm({
 
   function handleDateChange(e) {
     const raw = e.target.value.replace(/[^0-9]/g, "");
-    if (raw.length > 8) return;
+    if (raw.length > 6) return;
     setDateText(raw);
 
-    if (raw.length === 8) {
-      const datePart = raw.slice(0, 6);
-      const shiftPart = raw.slice(6, 8);
-      setDateRaw(datePart);
-      setShift(shiftPart === "01" ? "01" : "02");
-    } else if (raw.length === 6) {
+    if (raw.length === 6) {
       setDateRaw(raw);
     } else if (raw.length === 0) {
+      setDateRaw("");
+    } else {
       setDateRaw("");
     }
   }
@@ -116,11 +90,6 @@ export default function ScanForm({
     if (!barcode.trim()) {
       setError("Scan atau input barcode terlebih dahulu");
       barcodeRef.current?.focus();
-      return;
-    }
-
-    if (bahanSisa && (dateRaw.length !== 6 || !shift)) {
-      setError("Bahan sisa dicentang — tanggal produksi dan shift wajib diisi manual sesuai laporan operator");
       return;
     }
 

@@ -5,8 +5,6 @@ import WipLabel from "./WipLabel";
 import {
   ddmmyyToDateValue,
   ddmmyyToDDMMYYYY,
-  getTodayDDMMYY,
-  getTodayShift,
 } from "../lib/dateUtils";
 
 export default function Wip({ user }) {
@@ -31,10 +29,6 @@ export default function Wip({ user }) {
   const datePickerRef = useRef(null);
 
   useEffect(() => {
-    const today = getTodayDDMMYY();
-    setDateRaw(today);
-    setDateText(ddmmyyToDDMMYYYY(today));
-    setShift(getTodayShift());
     batchRef.current?.focus();
   }, []);
 
@@ -118,17 +112,14 @@ export default function Wip({ user }) {
 
   function handleDateChange(e) {
     const raw = e.target.value.replace(/[^0-9]/g, "");
-    if (raw.length > 8) return;
+    if (raw.length > 6) return;
     setDateText(raw);
 
-    if (raw.length === 8) {
-      const datePart = raw.slice(0, 6);
-      const shiftPart = raw.slice(6, 8);
-      setDateRaw(datePart);
-      setShift(shiftPart === "01" ? "01" : "02");
-    } else if (raw.length === 6) {
+    if (raw.length === 6) {
       setDateRaw(raw);
     } else if (raw.length === 0) {
+      setDateRaw("");
+    } else {
       setDateRaw("");
     }
   }
@@ -229,10 +220,9 @@ export default function Wip({ user }) {
     setSpk("");
     setQty("");
     setOperator("");
-    const today = getTodayDDMMYY();
-    setDateRaw(today);
-    setDateText(ddmmyyToDDMMYYYY(today));
-    setShift(getTodayShift());
+    setDateRaw("");
+    setDateText("");
+    setShift("");
     batchRef.current?.focus();
   }
 
