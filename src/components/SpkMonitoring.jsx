@@ -31,7 +31,6 @@ export default function SpkMonitoring({ canEdit }) {
   const [filterProduct, setFilterProduct] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [kpi, setKpi] = useState({ totalSpk: 0, totalTarget: 0, totalRealisasi: 0, totalKg: 0 });
-  const [orphan, setOrphan] = useState([]);
   const [detailSpk, setDetailSpk] = useState(null);
   const [detailRows, setDetailRows] = useState([]);
   const [detailBarcodes, setDetailBarcodes] = useState([]);
@@ -79,10 +78,6 @@ export default function SpkMonitoring({ canEdit }) {
         const totalKg = kpiRows.reduce((s, r) => s + parseFloat(r.qty_kg || 0), 0);
         setKpi({ totalSpk: kpiRows.length, totalTarget, totalRealisasi, totalKg });
       }
-
-      // orphan
-      const { data: orphanData } = await supabase.from("spk_orphan").select("*").limit(5);
-      setOrphan(orphanData || []);
     } catch (e) {
       setError(e?.message || "Gagal memuat");
     } finally {
@@ -215,12 +210,6 @@ export default function SpkMonitoring({ canEdit }) {
         <div className="summary-card"><div className="summary-card-label">Realisasi</div><div className="summary-card-value">{kpi.totalRealisasi.toLocaleString("id-ID")} <span className="summary-unit">pcs</span></div></div>
         <div className="summary-card summary-card-total"><div className="summary-card-label">Progress</div><div className="summary-card-value">{kpi.totalTarget ? ((kpi.totalRealisasi / kpi.totalTarget) * 100).toFixed(1) : 0}%</div></div>
       </div>
-
-      {orphan.length > 0 && (
-        <div className="alert alert-warning py-2">
-          <i className="bi bi-exclamation-triangle me-1" />Ada SPK di scan_logs belum terdaftar di master: {orphan.map((o) => `${o.spk} (${o.total_box} box)`).join(", ")}
-        </div>
-      )}
 
       <div className="filter-panel" style={{ marginBottom: 12 }}>
         <div className="filter-panel-body">
