@@ -8,6 +8,8 @@ import DailySummary from "./components/DailySummary";
 import TransactionHistory from "./components/TransactionHistory";
 import UserManagement from "./components/UserManagement";
 import AuditLog from "./components/AuditLog";
+import SpkMasterForm from "./components/SpkMasterForm";
+import SpkMonitoring from "./components/SpkMonitoring";
 import LoginPage from "./components/LoginPage";
 import ChangePasswordModal from "./components/ChangePasswordModal";
 import logo from "./assets/logo.png";
@@ -52,6 +54,14 @@ export function canViewLogs(user) {
   return !!user && user.role === "superadmin";
 }
 
+export function canManageSpk(user) {
+  return !!user && (user.role === "admin" || user.role === "superadmin");
+}
+
+export function canViewSpk(user) {
+  return !!user && (user.role === "admin" || SUPERVISOR_ROLES.includes(user.role) || user.role === "superadmin");
+}
+
 export function defaultViewFor(user) {
   if (!user) return "scan";
   if (user.role === "superadmin") return "users";
@@ -61,6 +71,8 @@ export function defaultViewFor(user) {
 
 const NAV_ITEMS = [
   { view: "scan", label: "Scan Barcode", icon: "bi-upc-scan", show: (u) => canInput(u) || SUPERVISOR_ROLES.includes(u?.role) },
+  { view: "spk-input", label: "Input SPK", icon: "bi-plus-circle", show: canManageSpk },
+  { view: "spk-monitoring", label: "Monitoring SPK", icon: "bi-clipboard-data", show: canViewSpk },
   { view: "trace", label: "Trace SPK", icon: "bi-search", show: (u) => !!u },
   { view: "history", label: "Riwayat", icon: "bi-clock-history", show: canViewHistory },
   { view: "summary", label: "Ringkasan", icon: "bi-bar-chart-line", show: canViewHistory },
@@ -70,6 +82,8 @@ const NAV_ITEMS = [
 
 const VIEW_TITLES = {
   scan: "Scan Barcode",
+  "spk-input": "Input SPK",
+  "spk-monitoring": "Monitoring SPK",
   trace: "Trace SPK",
   history: "Riwayat Transaksi",
   summary: "Ringkasan Harian",
@@ -432,6 +446,10 @@ function App() {
                 </div>
               </div>
             )
+          ) : view === "spk-input" ? (
+            canManageSpk(user) ? <SpkMasterForm user={user} /> : <div className="card access-locked"><div className="card-body"><h2>Akses Terkunci</h2><p>Hanya admin yang bisa input SPK.</p></div></div>
+          ) : view === "spk-monitoring" ? (
+            <SpkMonitoring canEdit={canManageSpk(user)} />
           ) : view === "trace" ? (
             <Suspense fallback={<div className="status status-loading">Memuat Trace SPK...</div>}>
               <TraceSpk />
