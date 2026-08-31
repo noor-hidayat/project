@@ -8,8 +8,6 @@ import DailySummary from "./components/DailySummary";
 import TransactionHistory from "./components/TransactionHistory";
 import UserManagement from "./components/UserManagement";
 import AuditLog from "./components/AuditLog";
-import Wip from "./components/Wip";
-import WipHistory from "./components/WipHistory";
 import LoginPage from "./components/LoginPage";
 import ChangePasswordModal from "./components/ChangePasswordModal";
 import logo from "./assets/logo.png";
@@ -54,10 +52,6 @@ export function canViewLogs(user) {
   return !!user && user.role === "superadmin";
 }
 
-export function canAccessWip(user) {
-  return !!user && (user.role === "admin" || SUPERVISOR_ROLES.includes(user.role) || user.role === "superadmin");
-}
-
 export function defaultViewFor(user) {
   if (!user) return "scan";
   if (user.role === "superadmin") return "users";
@@ -67,8 +61,6 @@ export function defaultViewFor(user) {
 
 const NAV_ITEMS = [
   { view: "scan", label: "Scan Barcode", icon: "bi-upc-scan", show: (u) => canInput(u) || SUPERVISOR_ROLES.includes(u?.role) },
-  { view: "wip", label: "Input WIP", icon: "bi-boxes", show: canAccessWip },
-  { view: "wip-history", label: "Riwayat WIP", icon: "bi-clock-history", show: canAccessWip },
   { view: "trace", label: "Trace SPK", icon: "bi-search", show: (u) => !!u },
   { view: "history", label: "Riwayat", icon: "bi-clock-history", show: canViewHistory },
   { view: "summary", label: "Ringkasan", icon: "bi-bar-chart-line", show: canViewHistory },
@@ -78,8 +70,6 @@ const NAV_ITEMS = [
 
 const VIEW_TITLES = {
   scan: "Scan Barcode",
-  wip: "Input WIP",
-  "wip-history": "Riwayat WIP",
   trace: "Trace SPK",
   history: "Riwayat Transaksi",
   summary: "Ringkasan Harian",
@@ -442,10 +432,6 @@ function App() {
                 </div>
               </div>
             )
-) : view === "wip" ? (
-            <Wip user={user} />
-          ) : view === "wip-history" ? (
-            <WipHistory />
           ) : view === "trace" ? (
             <Suspense fallback={<div className="status status-loading">Memuat Trace SPK...</div>}>
               <TraceSpk />
