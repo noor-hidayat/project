@@ -166,7 +166,7 @@ export default function ScanForm({
     setDateText(ddmmyyToDDMMYYYY(ddmmyy));
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError("");
 
@@ -194,8 +194,25 @@ export default function ScanForm({
 
     const spkVal = spk.trim();
     if (!spkVal) {
-      setError("No. SPK wajib diisi");
+      setError("No. SPK wajib diisi — pilih dari daftar SPK master");
+      spkRef.current?.focus();
       return;
+    }
+
+    // Validasi SPK wajib ada di master — cegah input manual bebas
+    // Jika spkInfo sudah ada dan cocok, skip query; jika tidak, cek ke DB
+    const spkInfoMatch = spkInfo && spkInfo.spk === spkVal;
+    if (!spkInfoMatch) {
+      const { data: spkRow, error: spkErr } = await supabase.from("spk_master").select("spk").eq("spk", spkVal).maybeSingle();
+      if (spkErr) {
+        setError("Gagal validasi SPK: " + spkErr.message);
+        return;
+      }
+      if (!spkRow) {
+        setError(`No. SPK "${spkVal}" tidak ditemukan di master — pilih SPK dari daftar / buat dulu di Input SPK`);
+        spkRef.current?.focus();
+        return;
+      }
     }
 
     onGenerate({

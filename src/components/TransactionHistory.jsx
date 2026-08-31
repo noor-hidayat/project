@@ -203,8 +203,23 @@ export default function TransactionHistory({ canEdit, canDelete, onBackToScan })
       changes.push(`operator: ${editTrx.operator || "-"} → ${editForm.operator || "-"}`);
     }
     if (editForm.spk !== undefined && editForm.spk !== (editTrx.spk || "")) {
-      payload.spk = editForm.spk;
-      changes.push(`no. SPK: ${editTrx.spk || "-"} → ${editForm.spk || "-"}`);
+      const newSpk = (editForm.spk || "").trim();
+      if (!newSpk) {
+        setEditError("No. SPK wajib diisi — pilih dari daftar SPK master, tidak boleh kosong");
+        return;
+      }
+      // Validasi SPK wajib ada di master
+      const { data: spkExists, error: spkErr } = await supabase.from("spk_master").select("spk").eq("spk", newSpk).maybeSingle();
+      if (spkErr) {
+        setEditError("Gagal validasi SPK: " + spkErr.message);
+        return;
+      }
+      if (!spkExists) {
+        setEditError(`No. SPK "${newSpk}" tidak ditemukan di master — pilih dari daftar / buat dulu di Input SPK`);
+        return;
+      }
+      payload.spk = newSpk;
+      changes.push(`no. SPK: ${editTrx.spk || "-"} → ${newSpk || "-"}`);
     }
     if (editForm.production_date && editForm.production_date !== editTrx.production_date) {
       payload.production_date = editForm.production_date;

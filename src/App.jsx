@@ -250,6 +250,22 @@ function App() {
       return;
     }
 
+    // SPK wajib ada di master — blok input manual bebas
+    const spkVal = (spk || "").trim();
+    if (!spkVal) {
+      setSaveError("No. SPK wajib diisi — pilih dari daftar SPK master");
+      return;
+    }
+    const { data: spkCheck, error: spkCheckErr } = await supabase.from("spk_master").select("spk").eq("spk", spkVal).maybeSingle();
+    if (spkCheckErr) {
+      setSaveError("Gagal validasi SPK: " + spkCheckErr.message);
+      return;
+    }
+    if (!spkCheck) {
+      setSaveError(`No. SPK "${spkVal}" tidak ditemukan di master — pilih dari daftar / buat dulu di Input SPK`);
+      return;
+    }
+
     let productName = "(kode tidak ditemukan)";
     const { data: product } = await supabase
       .from("products")
@@ -348,17 +364,27 @@ function App() {
     if (!generated) return;
     setSaveError("");
     setRollsheetError("");
-    // cek apakah SPK pakai rollsheet (tanpa_rollsheet = false)
+    // SPK wajib ada di master — blok simpan jika SPK belum terdaftar
     const spkVal = generated.spk?.trim();
-    if (spkVal) {
-      const { data: spkRow } = await supabase.from("spk_master").select("tanpa_rollsheet").eq("spk", spkVal).maybeSingle();
-      const pakaiRollsheet = spkRow ? !spkRow.tanpa_rollsheet : false;
-      if (pakaiRollsheet) {
-        setShowRollsheetModal(true);
-        setRollsheetKg("");
-        setRollsheetError("");
-        return;
-      }
+    if (!spkVal) {
+      setSaveError("No. SPK wajib diisi — pilih dari daftar SPK master");
+      return;
+    }
+    const { data: spkRow, error: spkErr } = await supabase.from("spk_master").select("tanpa_rollsheet").eq("spk", spkVal).maybeSingle();
+    if (spkErr) {
+      setSaveError("Gagal validasi SPK: " + spkErr.message);
+      return;
+    }
+    if (!spkRow) {
+      setSaveError(`No. SPK "${spkVal}" tidak ditemukan di master — pilih dari daftar / buat dulu di Input SPK`);
+      return;
+    }
+    const pakaiRollsheet = !spkRow.tanpa_rollsheet;
+    if (pakaiRollsheet) {
+      setShowRollsheetModal(true);
+      setRollsheetKg("");
+      setRollsheetError("");
+      return;
     }
     await doSaveTransaction(null);
   }, [generated, doSaveTransaction]);
