@@ -148,6 +148,9 @@ function App() {
   const [generated, setGenerated] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [showRollsheetModal, setShowRollsheetModal] = useState(false);
+  const [rollsheetKg, setRollsheetKg] = useState("");
+  const [rollsheetError, setRollsheetError] = useState("");
 
   useEffect(() => {
     preloadTrace();
@@ -288,17 +291,14 @@ function App() {
     });
   }, []);
 
-  const handleSave = useCallback(async () => {
+  const doSaveTransaction = useCallback(async (kgValue) => {
     if (!generated) return;
-
     setSaving(true);
     setSaveError("");
-
     const {
       barcodeDate, barcodeShift, productionDate,
       shift: formShift, operator, spk, productCode, productName, range, trxCode, bahanSisa,
     } = generated;
-
     const rows = range.map((bc) => ({
       barcode: bc,
       product_code: productCode,
@@ -313,17 +313,14 @@ function App() {
       admin_user: user.name || user.username,
       trx_code: trxCode,
       bahan_sisa: bahanSisa || false,
+      rollsheet_kg: kgValue ?? null,
     }));
-
     const { error: scanError } = await supabase.from("scan_logs").insert(rows);
-
     setSaving(false);
-
     if (scanError) {
       setSaveError("Gagal menyimpan: " + scanError.message);
-      return;
+      return false;
     }
-
     setResult({
       productName,
       productCode,
@@ -336,13 +333,45 @@ function App() {
       spk,
     });
     setGenerated(null);
-
+    setShowRollsheetModal(false);
+    setRollsheetKg("");
+    setRollsheetError("");
     addAuditLog({
       username: user?.username || user?.name,
       action: "transaction_input",
-      detail: `${trxCode} · ${productName || productCode} · ${range.length} barcode`,
+      detail: `${trxCode} · ${productName || productCode} · ${range.length} barcode${kgValue ? ` · rollsheet ${kgValue} kg` : ""}`,
     });
+    return true;
   }, [generated, user]);
+
+  const handleSave = useCallback(async () => {
+    if (!generated) return;
+    setSaveError("");
+    setRollsheetError("");
+    // cek apakah SPK pakai rollsheet (tanpa_rollsheet = false)
+    const spkVal = generated.spk?.trim();
+    if (spkVal) {
+      const { data: spkRow } = await supabase.from("spk_master").select("tanpa_rollsheet").eq("spk", spkVal).maybeSingle();
+      const pakaiRollsheet = spkRow ? !spkRow.tanpa_rollsheet : false;
+      if (pakaiRollsheet) {
+        setShowRollsheetModal(true);
+        setRollsheetKg("");
+        setRollsheetError("");
+        return;
+      }
+    }
+    await doSaveTransaction(null);
+  }, [generated, doSaveTransaction]);
+
+  const handleConfirmRollsheet = useCallback(async () => {
+    const raw = String(rollsheetKg).trim().replace(",", ".");
+    const num = parseFloat(raw);
+    if (!raw || isNaN(num) || num <= 0) {
+      setRollsheetError("Masukkan kg rollsheet yang dipakai (>0), support desimal");
+      return;
+    }
+    await doSaveTransaction(num);
+  }, [rollsheetKg, doSaveTransaction]);
 
   if (!user) {
     return <LoginPage onLogin={handleLogin} />;
@@ -472,6 +501,46 @@ function App() {
       </div>
       {showChangePassword && (
         <ChangePasswordModal user={user} onClose={() => setShowChangePassword(false)} />
+      )}
+      {showRollsheetModal && generated && (
+        <div className="modal-overlay" onClick={() => !saving && setShowRollsheetModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+            <div className="modal-header">
+              <h3>Rollsheet yang dipakai</h3>
+              <button className="modal-close" onClick={() => !saving && setShowRollsheetModal(false)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <p className="mb-2">
+                SPK <strong className="mono">{generated.spk}</strong> pakai rollsheet.<br />
+                Masukkan <strong>kg rollsheet</strong> yang dipakai untuk transaksi ini ({generated.range.length} barcode).
+              </p>
+              <div className="mb-3">
+                <label className="form-label" htmlFor="rollsheetKgInput">Kg Rollsheet <span className="req">*</span></label>
+                <input
+                  id="rollsheetKgInput"
+                  className="form-control"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={rollsheetKg}
+                  onChange={(e) => setRollsheetKg(e.target.value)}
+                  placeholder="contoh: 25.5"
+                  autoFocus
+                />
+                <div className="form-text">Support desimal. Akan disimpan di rollsheet_kg</div>
+              </div>
+              {rollsheetError && <div className="alert alert-danger py-2">{rollsheetError}</div>}
+              {saveError && <div className="alert alert-danger py-2">{saveError}</div>}
+              <div className="d-flex justify-content-end gap-2">
+                <button className="btn btn-outline-secondary" onClick={() => setShowRollsheetModal(false)} disabled={saving}>Batal</button>
+                <button className="btn btn-primary" onClick={handleConfirmRollsheet} disabled={saving}>
+                  <i className={"bi " + (saving ? "bi-hourglass-split" : "bi-check-lg") + " me-1"} />
+                  {saving ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
