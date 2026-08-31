@@ -14,6 +14,7 @@ import LoginPage from "./components/LoginPage";
 import ChangePasswordModal from "./components/ChangePasswordModal";
 import logo from "./assets/logo.png";
 import "./App.css";
+import useAutoReloadOnUpdate from "./hooks/useAutoReloadOnUpdate";
 
 const preloadTrace = () => import("./components/TraceSpk");
 const TraceSpk = lazy(preloadTrace);
@@ -106,6 +107,7 @@ function loadStoredUser() {
 }
 
 function App() {
+  const { updateAvailable } = useAutoReloadOnUpdate({ intervalMs: 30000, autoReload: true });
   const [user, setUser] = useState(loadStoredUser);
   const [view, setView] = useState(() => defaultViewFor(loadStoredUser()));
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -405,6 +407,13 @@ function App() {
 
   return (
     <>
+      {updateAvailable && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999, background: "#23295b", color: "#fff", textAlign: "center", padding: "8px 16px", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <i className="bi bi-arrow-clockwise" />
+          <span>Update tersedia — memuat ulang aplikasi...</span>
+          <button onClick={() => window.location.reload()} style={{ background: "#fff", color: "#23295b", border: 0, borderRadius: 6, padding: "2px 10px", fontWeight: 600, cursor: "pointer" }}>Reload Sekarang</button>
+        </div>
+      )}
       <div className="app">
       {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
 
