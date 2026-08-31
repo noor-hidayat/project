@@ -11,7 +11,9 @@ ALTER TABLE spk_master DROP CONSTRAINT IF EXISTS spk_master_qty_kg_check;
 ALTER TABLE spk_master ADD CONSTRAINT spk_master_qty_kg_check CHECK (qty_kg IS NULL OR qty_kg > 0);
 
 -- 3) Refresh view spk_monitoring untuk expose tanpa_rollsheet (qty_kg bisa NULL)
-CREATE OR REPLACE VIEW spk_monitoring AS
+-- DROP dulu karena CREATE OR REPLACE tidak boleh ganti nama/urutan kolom (error 42P16)
+DROP VIEW IF EXISTS spk_monitoring;
+CREATE VIEW spk_monitoring AS
 SELECT
   m.id,
   m.spk,
