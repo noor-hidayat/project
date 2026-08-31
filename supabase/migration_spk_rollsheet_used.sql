@@ -28,9 +28,9 @@ SELECT
   a.first_date,
   a.last_date,
   a.last_input,
-  COALESCE(a.total_rollsheet_used, 0) AS total_rollsheet_used,
-  CASE WHEN m.qty_kg IS NOT NULL THEN m.qty_kg - COALESCE(a.total_rollsheet_used, 0) ELSE NULL END AS sisa_kg,
-  CASE WHEN m.qty_kg IS NOT NULL AND m.qty_kg > 0 THEN ROUND(COALESCE(a.total_rollsheet_used,0)::numeric / m.qty_kg * 100, 1) ELSE NULL END AS rollsheet_progress_pct
+  COALESCE(r.total_rollsheet_used, 0) AS total_rollsheet_used,
+  CASE WHEN m.qty_kg IS NOT NULL THEN m.qty_kg - COALESCE(r.total_rollsheet_used, 0) ELSE NULL END AS sisa_kg,
+  CASE WHEN m.qty_kg IS NOT NULL AND m.qty_kg > 0 THEN ROUND(COALESCE(r.total_rollsheet_used,0)::numeric / m.qty_kg * 100, 1) ELSE NULL END AS rollsheet_progress_pct
 FROM spk_master m
 LEFT JOIN (
   SELECT
@@ -39,8 +39,13 @@ LEFT JOIN (
     COUNT(DISTINCT trx_code) AS total_trx,
     MIN(production_date) AS first_date,
     MAX(production_date) AS last_date,
-    MAX(created_at) AS last_input,
-    COALESCE(SUM(trx_kg), 0) AS total_rollsheet_used
+    MAX(created_at) AS last_input
+  FROM scan_logs
+  WHERE spk IS NOT NULL AND spk <> ''
+  GROUP BY spk
+) a ON a.spk = m.spk
+LEFT JOIN (
+  SELECT spk, COALESCE(SUM(trx_kg), 0) AS total_rollsheet_used
   FROM (
     SELECT spk, trx_code, MAX(rollsheet_kg) AS trx_kg
     FROM scan_logs
@@ -48,7 +53,7 @@ LEFT JOIN (
     GROUP BY spk, trx_code
   ) t
   GROUP BY spk
-) a ON a.spk = m.spk;
+) r ON r.spk = m.spk;
 
 GRANT SELECT ON spk_monitoring TO anon, authenticated;
 
