@@ -1,37 +1,11 @@
-/* Migration: tambah batch_code di scan_logs + dedup hitung rollsheet per batch (1 batch dipakai N trx tetap hitung 1x per SPK)
-   Jalankan di Supabase SQL Editor setelah migration_scan_logs_rollsheet_kg.sql */
+-- Hotfix: pastikan view spk_monitoring dedup rollsheet 1x per batch (fix x2 seperti SPK 2PM2-26.08.1453/VCM)
+-- Jalankan ini di Supabase SQL Editor JIKA migration_add_batch_to_scan_logs.sql sudah pernah dijalankan tapi kg masih x2.
+-- Penyebab x2 umum: (1) view lama masih versi per-trx_code, (2) batch_code sama tapi beda case/spasi -> dianggap 2 batch, (3) data lama tanpa batch_code tetap hitung per-trx.
 
-ALTER TABLE scan_logs ADD COLUMN IF NOT EXISTS batch_code TEXT;
--- normalisasi data lama: trim + uppercase agar dedup konsisten (1RS-6GUMP3-91-01 ==  1rs-6gump3-91-01 )
-UPDATE scan_logs SET batch_code = UPPER(TRIM(batch_code)) WHERE batch_code IS NOT NULL AND batch_code <> '' AND batch_code <> UPPER(TRIM(batch_code));
-CREATE INDEX IF NOT EXISTS idx_scan_logs_batch ON scan_logs(batch_code);
-CREATE INDEX IF NOT EXISTS idx_scan_logs_spk_batch ON scan_logs(spk, batch_code);
--- index untuk dedup normalized (untuk SPK dengan batch berbeda case/spasi tetap 1x)
-CREATE INDEX IF NOT EXISTS idx_scan_logs_spk_batch_norm ON scan_logs(spk, UPPER(TRIM(batch_code)));
+-- 1) Normalisasi batch_code yang sudah terlanjur tersimpan (trim + uppercase)
+UPDATE scan_logs SET batch_code = UPPER(TRIM(batch_code)) WHERE batch_code IS NOT NULL AND TRIM(batch_code) <> '' AND batch_code <> UPPER(TRIM(batch_code));
 
-/* Rebuild trx_summary agar bawa batch_code */
-DROP VIEW IF EXISTS trx_summary;
-CREATE OR REPLACE VIEW trx_summary AS
-SELECT
-  trx_code,
-  MAX(product_name)    AS product_name,
-  MAX(product_code)    AS product_code,
-  MAX(production_date) AS production_date,
-  MAX(shift)           AS shift,
-  MAX(operator)        AS operator,
-  MAX(spk)             AS spk,
-  MAX(admin_user)      AS admin_user,
-  MAX(created_at)      AS created_at,
-  MAX(rollsheet_kg)    AS rollsheet_kg,
-  MAX(batch_code)      AS batch_code,
-  COUNT(*)             AS qty
-FROM scan_logs
-WHERE trx_code IS NOT NULL
-GROUP BY trx_code;
-
-GRANT SELECT ON trx_summary TO anon, authenticated;
-
-/* Rebuild spk_monitoring: dedup per batch_code (1 batch hitung 1x per SPK) */
+-- 2) Rebuild view spk_monitoring dengan dedup normalized (sama seperti migration_add_batch_to_scan_logs.sql yang sudah di-patch)
 DROP VIEW IF EXISTS spk_monitoring;
 CREATE VIEW spk_monitoring AS
 SELECT
@@ -78,13 +52,11 @@ LEFT JOIN (
 LEFT JOIN (
   SELECT spk, COALESCE(SUM(batch_kg), 0) AS total_rollsheet_used
   FROM (
-    -- batch ada batch_code: hitung 1x per batch_code per SPK (dedup) — normalisasi TRIM+UPPER agar "1RS-.." == " 1rs-.. " tidak x2
     SELECT spk, UPPER(TRIM(batch_code)) AS batch_norm, MAX(rollsheet_kg) AS batch_kg
     FROM scan_logs
     WHERE spk IS NOT NULL AND spk <> '' AND batch_code IS NOT NULL AND TRIM(batch_code) <> ''
     GROUP BY spk, UPPER(TRIM(batch_code))
     UNION ALL
-    -- fallback data lama tanpa batch_code: hitung per trx_code
     SELECT spk, trx_code AS batch_norm, MAX(rollsheet_kg) AS batch_kg
     FROM scan_logs
     WHERE spk IS NOT NULL AND spk <> '' AND (batch_code IS NULL OR TRIM(batch_code) = '') AND rollsheet_kg IS NOT NULL
@@ -94,5 +66,13 @@ LEFT JOIN (
 ) r ON r.spk = m.spk;
 
 GRANT SELECT ON spk_monitoring TO anon, authenticated;
-
 NOTIFY pgrst, 'reload schema';
+
+-- 3) DIAGNOSA SPK 2PM2-26.08.1453/VCM — jalankan SELECT di bawah untuk cek kenapa x2:
+-- SELECT spk, trx_code, batch_code, UPPER(TRIM(batch_code)) AS batch_norm, rollsheet_kg, COUNT(*) AS rows_per_trx FROM scan_logs WHERE spk='2PM2-26.08.1453/VCM' GROUP BY spk, trx_code, batch_code, rollsheet_kg ORDER BY trx_code;
+-- SELECT * FROM spk_monitoring WHERE spk='2PM2-26.08.1453/VCM';
+-- SELECT spk, UPPER(TRIM(batch_code)) AS batch_norm, MAX(rollsheet_kg) AS kg, COUNT(*) AS trx_pakai_batch FROM scan_logs WHERE spk='2PM2-26.08.1453/VCM' AND TRIM(coalesce(batch_code,''))<>'' GROUP BY spk, UPPER(TRIM(batch_code));
+-- SELECT spk, trx_code, MAX(rollsheet_kg) AS kg FROM scan_logs WHERE spk='2PM2-26.08.1453/VCM' AND (batch_code IS NULL OR TRIM(batch_code)='') GROUP BY spk, trx_code;
+
+-- 4) Jika hasil diagnosa menunjukkan 1 batch dipakai 2 trx tapi batch_code berbeda string (misal "1RS-6GUMP3-91-01" vs "1RS-6GUMP3-91-01 " atau vs "1RS-6GUMP3-91-02"),
+--    gabungkan manual: UPDATE scan_logs SET batch_code = '1RS-6GUMP3-91-01' WHERE spk='2PM2-26.08.1453/VCM' AND UPPER(TRIM(batch_code)) IN ('...','...');

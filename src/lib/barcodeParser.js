@@ -62,5 +62,7 @@ export function parseBatchKg(batchStr) {
   const hasDecimal = kgRaw.includes(".") || kgRaw.includes(",");
   const finalNum = hasDecimal ? parseFloat(kgRaw.replace(",", ".")) : num;
   if (isNaN(finalNum) || finalNum <= 0) return null;
-  return { kg: finalNum, batchCode: s, kgRaw };
+  // normalisasi batchCode: trim + uppercase agar dedup di DB (UPPER(TRIM(batch_code))) konsisten & cegah x2 karena spasi/case
+  const normalized = s.toUpperCase();
+  return { kg: finalNum, batchCode: normalized, kgRaw };
 }

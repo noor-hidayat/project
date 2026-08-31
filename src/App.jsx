@@ -317,7 +317,7 @@ function App() {
       shift: formShift, operator, spk, productCode, productName, range, trxCode, bahanSisa, batchCode, batchKg,
     } = generated;
     const finalKg = kgValue ?? batchKg ?? null;
-    const finalBatch = batchCodeVal ?? batchCode ?? null;
+    const finalBatch = (batchCodeVal ?? batchCode ?? null) ? String(batchCodeVal ?? batchCode).trim().toUpperCase() : null;
     const rows = range.map((bc) => ({
       barcode: bc,
       product_code: productCode,
