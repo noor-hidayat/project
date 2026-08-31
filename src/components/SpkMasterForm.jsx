@@ -9,6 +9,7 @@ export default function SpkMasterForm({ user }) {
   const [qtyPerBox, setQtyPerBox] = useState("");
   const [targetPcs, setTargetPcs] = useState("");
   const [notes, setNotes] = useState("");
+  const [tanpaRollsheet, setTanpaRollsheet] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
@@ -85,7 +86,8 @@ export default function SpkMasterForm({ user }) {
 
     const spkVal = spk.trim();
     const nameVal = productName.trim();
-    const qtyKgNum = parseFloat(String(qtyKg).replace(",", "."));
+    const qtyKgRaw = String(qtyKg).trim();
+    const qtyKgNum = qtyKgRaw === "" ? null : parseFloat(qtyKgRaw.replace(",", "."));
     const qtyBoxNum = parseInt(qtyPerBox, 10);
     const targetNum = parseInt(targetPcs, 10);
 
@@ -102,9 +104,16 @@ export default function SpkMasterForm({ user }) {
       setError("Produk tidak ditemukan. Pilih dari daftar produk yang ada");
       return;
     }
-    if (isNaN(qtyKgNum) || qtyKgNum <= 0) {
-      setError("Qty Kg Roll harus angka desimal > 0 (contoh 50.5)");
-      return;
+    if (!tanpaRollsheet) {
+      if (qtyKgNum === null || isNaN(qtyKgNum) || qtyKgNum <= 0) {
+        setError("Qty Kg Roll harus angka desimal > 0 (contoh 50.5)");
+        return;
+      }
+    } else {
+      if (qtyKgRaw !== "" && (isNaN(qtyKgNum) || qtyKgNum <= 0)) {
+        setError("Qty Kg Roll harus angka desimal > 0 atau kosongkan jika tanpa rollsheet");
+        return;
+      }
     }
     if (isNaN(qtyBoxNum) || qtyBoxNum <= 0) {
       setError("Qty Per Box harus angka bulat > 0");
@@ -135,6 +144,7 @@ export default function SpkMasterForm({ user }) {
       qty_kg: qtyKgNum,
       qty_per_box: qtyBoxNum,
       target_pcs: targetNum,
+      tanpa_rollsheet: tanpaRollsheet,
       notes: notes.trim() || null,
       created_by: user?.name || user?.username || null,
     });
@@ -148,7 +158,7 @@ export default function SpkMasterForm({ user }) {
     addAuditLog({
       username: user?.username || user?.name,
       action: "spk_create",
-      detail: `${spkVal} · ${prod.name} · ${qtyKgNum} kg · ${qtyBoxNum}/box · target ${targetNum}`,
+      detail: `${spkVal} · ${prod.name} · ${qtyKgNum ?? "-"} kg · ${qtyBoxNum}/box · target ${targetNum}${tanpaRollsheet ? " · tanpa rollsheet" : ""}`,
     });
 
     setSuccess(`SPK ${spkVal} berhasil disimpan`);
@@ -158,6 +168,7 @@ export default function SpkMasterForm({ user }) {
     setQtyPerBox("");
     setTargetPcs("");
     setNotes("");
+    setTanpaRollsheet(false);
     spkRef.current?.focus();
   }
 
@@ -236,7 +247,7 @@ export default function SpkMasterForm({ user }) {
               )}
             </div>
             <div className="col-md-4 mb-3">
-              <label className="form-label" htmlFor="qtyKg">Qty Kg Roll <span className="req">*</span></label>
+              <label className="form-label" htmlFor="qtyKg">Qty Kg Roll {tanpaRollsheet ? <span className="text-muted">(opsional)</span> : <span className="req">*</span>}</label>
               <input
                 id="qtyKg"
                 className="form-control"
@@ -245,10 +256,10 @@ export default function SpkMasterForm({ user }) {
                 min="0.01"
                 value={qtyKg}
                 onChange={(e) => setQtyKg(e.target.value)}
-                placeholder="contoh: 50.5"
-                required
+                placeholder={tanpaRollsheet ? "Kosongkan jika tanpa rollsheet" : "contoh: 50.5"}
+                required={!tanpaRollsheet}
               />
-              <div className="form-text">Support desimal</div>
+              <div className="form-text">{tanpaRollsheet ? "Boleh kosong jika tanpa rollsheet" : "Support desimal"}</div>
             </div>
             <div className="col-md-4 mb-3">
               <label className="form-label" htmlFor="qtyPerBox">Qty Per Box (pcs) <span className="req">*</span></label>
@@ -280,7 +291,7 @@ export default function SpkMasterForm({ user }) {
               />
               <div className="form-text">Total pcs SPK. Contoh: 2 box × 1000 = 2000</div>
             </div>
-            <div className="col-12 mb-3">
+            <div className="col-12 mb-2">
               <label className="form-label" htmlFor="notes">Notes (opsional)</label>
               <input
                 id="notes"
@@ -290,6 +301,21 @@ export default function SpkMasterForm({ user }) {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Catatan over/closed dll"
               />
+            </div>
+            <div className="col-12 mb-3">
+              <div className="form-check">
+                <input
+                  id="tanpaRollsheet"
+                  className="form-check-input"
+                  type="checkbox"
+                  checked={tanpaRollsheet}
+                  onChange={(e) => setTanpaRollsheet(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="tanpaRollsheet">
+                  SPK ini <strong>tidak pakai rollsheet</strong>
+                </label>
+              </div>
+              <div className="form-text">Jika dicentang, Qty Kg Roll jadi tidak wajib</div>
             </div>
           </div>
           {error && <div className="alert alert-danger py-2">{error}</div>}

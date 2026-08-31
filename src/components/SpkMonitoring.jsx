@@ -36,7 +36,7 @@ export default function SpkMonitoring({ canEdit }) {
   const [detailBarcodes, setDetailBarcodes] = useState([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [editRow, setEditRow] = useState(null);
-  const [editForm, setEditForm] = useState({ qty_kg: "", qty_per_box: "", target_pcs: "", notes: "", status: "" });
+  const [editForm, setEditForm] = useState({ qty_kg: "", qty_per_box: "", target_pcs: "", notes: "", status: "", tanpa_rollsheet: false });
   const [editing, setEditing] = useState(false);
   const [editError, setEditError] = useState("");
   const [deleteRow, setDeleteRow] = useState(null);
@@ -104,7 +104,8 @@ export default function SpkMonitoring({ canEdit }) {
     const data = detailBarcodes.map((b) => ({
       SPK: detailSpk.spk,
       Produk: detailSpk.product_name,
-      "Qty Kg": detailSpk.qty_kg,
+      "Qty Kg": detailSpk.qty_kg ?? "-",
+      "Tanpa Rollsheet": detailSpk.tanpa_rollsheet ? "Ya" : "Tidak",
       "Qty/Box": detailSpk.qty_per_box,
       Target: detailSpk.target_pcs,
       Realisasi: detailSpk.realisasi_pcs,
@@ -126,7 +127,8 @@ export default function SpkMonitoring({ canEdit }) {
       SPK: r.spk,
       Produk: r.product_name,
       "Kode Produk": r.product_code,
-      "Qty Kg": r.qty_kg,
+      "Qty Kg": r.qty_kg ?? "-",
+      "Tanpa Rollsheet": r.tanpa_rollsheet ? "Ya" : "Tidak",
       "Qty/Box": r.qty_per_box,
       "Target Pcs": r.target_pcs,
       "Realisasi Pcs": r.realisasi_pcs,
@@ -151,16 +153,22 @@ export default function SpkMonitoring({ canEdit }) {
       target_pcs: String(r.target_pcs ?? ""),
       notes: r.notes || "",
       status: r.master_status || "open",
+      tanpa_rollsheet: !!r.tanpa_rollsheet,
     });
   }
 
   async function handleSaveEdit(e) {
     e.preventDefault();
     if (!editRow) return;
-    const qtyKgNum = parseFloat(String(editForm.qty_kg).replace(",", "."));
+    const qtyKgRaw = String(editForm.qty_kg).trim();
+    const qtyKgNum = qtyKgRaw === "" ? null : parseFloat(qtyKgRaw.replace(",", "."));
     const qtyBoxNum = parseInt(editForm.qty_per_box, 10);
     const targetNum = parseInt(editForm.target_pcs, 10);
-    if (isNaN(qtyKgNum) || qtyKgNum <= 0) { setEditError("Qty Kg harus >0"); return; }
+    if (!editForm.tanpa_rollsheet) {
+      if (qtyKgNum === null || isNaN(qtyKgNum) || qtyKgNum <= 0) { setEditError("Qty Kg harus >0"); return; }
+    } else {
+      if (qtyKgRaw !== "" && (isNaN(qtyKgNum) || qtyKgNum <= 0)) { setEditError("Qty Kg harus >0 atau kosongkan"); return; }
+    }
     if (isNaN(qtyBoxNum) || qtyBoxNum <= 0) { setEditError("Qty Per Box harus >0"); return; }
     if (isNaN(targetNum) || targetNum <= 0) { setEditError("Target harus >0"); return; }
     setEditing(true);
@@ -169,6 +177,7 @@ export default function SpkMonitoring({ canEdit }) {
       qty_kg: qtyKgNum,
       qty_per_box: qtyBoxNum,
       target_pcs: targetNum,
+      tanpa_rollsheet: !!editForm.tanpa_rollsheet,
       notes: editForm.notes.trim() || null,
       status: editForm.status,
     }).eq("spk", editRow.spk);
@@ -176,7 +185,7 @@ export default function SpkMonitoring({ canEdit }) {
     if (err) { setEditError(err.message); return; }
     setEditRow(null);
     load();
-    addAuditLog({ username: actor?.username, action: "spk_edit", detail: `${editRow.spk} · ${qtyKgNum}kg · ${qtyBoxNum}/box · target ${targetNum} · ${editForm.status}` });
+    addAuditLog({ username: actor?.username, action: "spk_edit", detail: `${editRow.spk} · ${qtyKgNum ?? "-"}kg · ${qtyBoxNum}/box · target ${targetNum} · ${editForm.status}${editForm.tanpa_rollsheet ? " · tanpa rollsheet" : ""}` });
   }
 
   async function handleDelete() {
@@ -261,9 +270,9 @@ export default function SpkMonitoring({ canEdit }) {
                   const over = r.selisih_pcs < 0;
                   return (
                     <tr key={r.spk}>
-                      <td className="cell-mono">{r.spk}</td>
+                      <td className="cell-mono">{r.spk}{r.tanpa_rollsheet ? <span className="badge bg-secondary ms-1" title="Tanpa rollsheet">NR</span> : null}</td>
                       <td className="cell-product" title={r.product_name}>{r.product_name}<br /><span className="summary-prod-code">{r.product_code}</span></td>
-                      <td className="text-center">{r.qty_kg}</td>
+                      <td className="text-center">{r.qty_kg ?? "-"}</td>
                       <td className="text-center">{r.qty_per_box}</td>
                       <td className="text-center">{r.target_pcs.toLocaleString("id-ID")}</td>
                       <td className="text-center">{r.realisasi_pcs.toLocaleString("id-ID")}</td>
@@ -323,7 +332,7 @@ export default function SpkMonitoring({ canEdit }) {
             <div className="modal-body">
               <div className="modal-info">
                 <div className="modal-info-row"><span className="modal-info-label">Produk</span><span className="modal-info-value">{detailSpk.product_name} ({detailSpk.product_code})</span></div>
-                <div className="modal-info-row"><span className="modal-info-label">Roll Kg</span><span className="modal-info-value">{detailSpk.qty_kg} kg</span></div>
+                <div className="modal-info-row"><span className="modal-info-label">Roll Kg</span><span className="modal-info-value">{detailSpk.qty_kg ?? "-"} {detailSpk.qty_kg ? "kg" : ""} {detailSpk.tanpa_rollsheet ? "(tanpa rollsheet)" : ""}</span></div>
                 <div className="modal-info-row"><span className="modal-info-label">Qty/Box</span><span className="modal-info-value">{detailSpk.qty_per_box} pcs</span></div>
                 <div className="modal-info-row"><span className="modal-info-label">Target</span><span className="modal-info-value">{detailSpk.target_pcs} pcs</span></div>
                 <div className="modal-info-row"><span className="modal-info-label">Realisasi</span><span className="modal-info-value">{detailSpk.realisasi_pcs} pcs ({detailSpk.total_box} box)</span></div>
@@ -356,10 +365,11 @@ export default function SpkMonitoring({ canEdit }) {
             <div className="modal-header"><h3>Edit {editRow.spk}</h3><button className="modal-close" onClick={() => !editing && setEditRow(null)}>&times;</button></div>
             <div className="modal-body">
               <form onSubmit={handleSaveEdit}>
-                <div className="mb-3"><label className="form-label">Qty Kg Roll</label><input type="number" step="0.01" className="form-control form-control-sm" value={editForm.qty_kg} onChange={(e) => setEditForm({ ...editForm, qty_kg: e.target.value })} /></div>
+                <div className="mb-3"><label className="form-label">Qty Kg Roll {editForm.tanpa_rollsheet ? "(opsional)" : ""}</label><input type="number" step="0.01" className="form-control form-control-sm" value={editForm.qty_kg} onChange={(e) => setEditForm({ ...editForm, qty_kg: e.target.value })} placeholder={editForm.tanpa_rollsheet ? "Kosongkan jika tanpa rollsheet" : ""} /></div>
                 <div className="mb-3"><label className="form-label">Qty Per Box</label><input type="number" className="form-control form-control-sm" value={editForm.qty_per_box} onChange={(e) => setEditForm({ ...editForm, qty_per_box: e.target.value })} /></div>
                 <div className="mb-3"><label className="form-label">Target Pcs</label><input type="number" className="form-control form-control-sm" value={editForm.target_pcs} onChange={(e) => setEditForm({ ...editForm, target_pcs: e.target.value })} /></div>
                 <div className="mb-3"><label className="form-label">Status</label><select className="form-select form-select-sm" value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}><option value="open">Open</option><option value="done">Done</option><option value="over">Over</option><option value="closed">Closed</option></select></div>
+                <div className="mb-3 form-check"><input id="editTanpa" type="checkbox" className="form-check-input" checked={!!editForm.tanpa_rollsheet} onChange={(e) => setEditForm({ ...editForm, tanpa_rollsheet: e.target.checked })} /><label htmlFor="editTanpa" className="form-check-label">Tidak pakai rollsheet (Qty Kg jadi opsional)</label></div>
                 <div className="mb-3"><label className="form-label">Notes</label><input type="text" className="form-control form-control-sm" value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} /></div>
                 {editError && <div className="alert alert-danger py-2">{editError}</div>}
                 <div className="d-flex justify-content-end gap-2"><button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setEditRow(null)} disabled={editing}>Batal</button><button type="submit" className="btn btn-sm btn-primary" disabled={editing}>{editing ? "Menyimpan..." : "Simpan"}</button></div>
