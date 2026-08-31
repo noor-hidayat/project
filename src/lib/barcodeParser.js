@@ -35,3 +35,32 @@ export function validateQty(qty) {
   if (isNaN(n) || n < 1 || n > 500) return "Qty harus 1–500";
   return null;
 }
+
+export function parseBatchKg(batchStr) {
+  if (!batchStr || typeof batchStr !== "string") return null;
+  const s = batchStr.trim();
+  if (!s) return null;
+  // Format fisik: 1RS-6GUMP3-229-01 (3 segmen terakhir: kg 2-3 digit integer)
+  // Contoh: 1RS-6GUMP3-85-01 -> 85, 1RS-6GUMP3-229-01 -> 229
+  // Fisik tidak ada desimal: 90.5 actual -> batch tulis 91, jadi parse int saja
+  let kgRaw = null;
+  const parts = s.split("-");
+  if (parts.length >= 4) {
+    kgRaw = parts[2];
+  } else if (parts.length === 3) {
+    kgRaw = parts[1];
+  } else {
+    // fallback: cari angka pertama di string
+    const m = s.match(/(\d+(?:[.,]\d+)?)/);
+    if (m) kgRaw = m[1];
+  }
+  if (!kgRaw) return null;
+  // fisik integer, tapi dukung juga desimal jika ada (pakai parseFloat tanpa pembulatan)
+  const num = parseInt(kgRaw.replace(",", ".").split(".")[0], 10);
+  // jika kgRaw mengandung desimal literal "90.5", parseInt akan ambil 90 - fallback ke parseFloat untuk jaga presisi
+  // cek apakah kgRaw mengandung titik/koma desimal -> pakai parseFloat murni tanpa Math.round
+  const hasDecimal = kgRaw.includes(".") || kgRaw.includes(",");
+  const finalNum = hasDecimal ? parseFloat(kgRaw.replace(",", ".")) : num;
+  if (isNaN(finalNum) || finalNum <= 0) return null;
+  return { kg: finalNum, batchCode: s, kgRaw };
+}

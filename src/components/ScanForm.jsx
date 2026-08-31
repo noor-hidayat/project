@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { parseBarcode } from "../lib/barcodeParser";
+import { parseBarcode, parseBatchKg } from "../lib/barcodeParser";
 import { supabase } from "../lib/supabaseClient";
 import {
   ddmmyyToDDMMYYYY,
@@ -16,6 +16,11 @@ function fmtProdDate(d) {
   return d?.split("-").reverse().join("-") || "-";
 }
 
+function isAsbOrInject(spkInfo, spkVal) {
+  const hay = `${spkInfo?.spk || ""} ${spkInfo?.product_name || ""} ${spkInfo?.product_code || ""} ${spkVal || ""}`.toLowerCase();
+  return hay.includes("asb") || hay.includes("inject");
+}
+
 export default function ScanForm({
   generated, onGenerate, onSave, saving,
   saveError, result, onNewTransaction,
@@ -30,8 +35,11 @@ export default function ScanForm({
   const [operator, setOperator] = useState("");
   const [spk, setSpk] = useState("");
   const [bahanSisa, setBahanSisa] = useState(false);
+  const [batch, setBatch] = useState("");
+  const [batchKg, setBatchKg] = useState(null);
   const [error, setError] = useState("");
   const barcodeRef = useRef(null);
+  const batchRef = useRef(null);
   const datePickerRef = useRef(null);
   const spkWrapRef = useRef(null);
   const spkRef = useRef(null);
@@ -132,6 +140,12 @@ export default function ScanForm({
     }
   }, []);
 
+  const handleBatchChange = useCallback((value) => {
+    setBatch(value);
+    const parsed = parseBatchKg(value);
+    setBatchKg(parsed ? parsed.kg : null);
+  }, []);
+
   function toggleBahanSisa(checked) {
     setBahanSisa(checked);
   }
@@ -215,6 +229,43 @@ export default function ScanForm({
       }
     }
 
+    // Batch wajib jika SPK pakai rollsheet (tanpa_rollsheet=false) dan bukan ASB/Inject
+    const tanpaRollsheet = spkInfo ? !!spkInfo.tanpa_rollsheet : false;
+    const asbOrInject = isAsbOrInject(spkInfo, spkVal);
+    const batchRequired = !(tanpaRollsheet || asbOrInject);
+    let batchVal = batch.trim();
+    let kgFromBatch = null;
+    if (batchRequired) {
+      if (!batchVal) {
+        setError("Scan batch roll di samping barcode wajib — contoh: 1RS-6GUMP3-91-01 (kg dari batch, 1 batch hitung 1x)");
+        batchRef.current?.focus();
+        return;
+      }
+      const parsedBatch = parseBatchKg(batchVal);
+      if (!parsedBatch) {
+        setError("Format batch tidak valid — contoh: 1RS-6GUMP3-91-01 atau 1RS-6GUMP3-229-01");
+        batchRef.current?.focus();
+        return;
+      }
+      kgFromBatch = parsedBatch.kg;
+      batchVal = parsedBatch.batchCode;
+    } else {
+      // SPK tanpa rollsheet / ASB / Inject: batch opsional
+      if (batchVal) {
+        const parsedBatch = parseBatchKg(batchVal);
+        if (parsedBatch) {
+          kgFromBatch = parsedBatch.kg;
+          batchVal = parsedBatch.batchCode;
+        } else {
+          batchVal = "";
+          kgFromBatch = null;
+        }
+      } else {
+        batchVal = "";
+        kgFromBatch = null;
+      }
+    }
+
     onGenerate({
       barcode: barcode.trim(),
       barcodeDate: ddmmyyToDateValue(barcodeDateInfo || dateRaw),
@@ -225,6 +276,8 @@ export default function ScanForm({
       operator: operator.trim(),
       spk: spkVal,
       bahanSisa,
+      batchCode: batchVal || null,
+      batchKg: kgFromBatch ?? null,
     });
   }
 
@@ -236,27 +289,62 @@ export default function ScanForm({
           <h5 className="mb-0">Scan Barcode</h5>
         </div>
         <form className="card-body" onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label className="form-label" htmlFor="barcode">Barcode Awal</label>
-            <div className="input-group">
-              <span className="input-group-text"><i className="bi bi-upc-scan"/></span>
-              <input
-                ref={barcodeRef}
-                id="barcode"
-                className="form-control mono"
-                type="text"
-                value={barcode}
-                onChange={(e) => handleBarcodeChange(e.target.value)}
-                placeholder="Scan atau ketik barcode..."
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </div>
-            {barcodeDateInfo && (
-              <div className="form-text mt-1">
-                &#9432; Tanggal dari barcode: <strong>{ddmmyyToDDMMYYYY(barcodeDateInfo)}</strong>
+          <div className="row">
+            <div className="col-md-6 mb-3">
+              <label className="form-label" htmlFor="barcode">Barcode Awal</label>
+              <div className="input-group">
+                <span className="input-group-text"><i className="bi bi-upc-scan"/></span>
+                <input
+                  ref={barcodeRef}
+                  id="barcode"
+                  className="form-control mono"
+                  type="text"
+                  value={barcode}
+                  onChange={(e) => handleBarcodeChange(e.target.value)}
+                  placeholder="Scan atau ketik barcode..."
+                  autoComplete="off"
+                  spellCheck={false}
+                />
               </div>
-            )}
+              {barcodeDateInfo && (
+                <div className="form-text mt-1">
+                  &#9432; Tanggal dari barcode: <strong>{ddmmyyToDDMMYYYY(barcodeDateInfo)}</strong>
+                </div>
+              )}
+            </div>
+            {(() => {
+              const tanpaRollsheet = spkInfo ? !!spkInfo.tanpa_rollsheet : false;
+              const asbOrInject = isAsbOrInject(spkInfo, spk);
+              const batchRequired = !(tanpaRollsheet || asbOrInject);
+              return (
+                <div className="col-md-6 mb-3">
+                  <label className="form-label" htmlFor="batch">Scan Batch {batchRequired ? <span className="req">*</span> : <span className="text-muted">(opsional)</span>}</label>
+                  <div className="input-group">
+                    <span className="input-group-text"><i className="bi bi-box-seam"/></span>
+                    <input
+                      ref={batchRef}
+                      id="batch"
+                      className="form-control mono"
+                      type="text"
+                      value={batch}
+                      onChange={(e) => handleBatchChange(e.target.value)}
+                      placeholder="Scan 1RS-6GUMP3-91-01"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </div>
+                  {batchKg != null ? (
+                    <div className="form-text mt-1 text-success">&#9432; Kg dari batch: <strong>{batchKg} kg</strong> <span className="text-muted">· 1 batch hitung 1x</span></div>
+                  ) : batch.trim() ? (
+                    <div className="form-text mt-1 text-warning">&#9888; Batch tidak valid — contoh: 1RS-6GUMP3-91-01</div>
+                  ) : batchRequired ? (
+                    <div className="form-text">Wajib jika SPK pakai rollsheet · 2-3 digit (85 / 229) · Fisik integer</div>
+                  ) : (
+                    <div className="form-text text-muted">Tidak perlu scan batch — SPK {asbOrInject ? "ASB/Inject" : "tanpa rollsheet"} tidak pakai roll</div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           <div className="row">
@@ -392,8 +480,9 @@ export default function ScanForm({
               {spkInfoLoading ? (
                 <div className="form-text mt-1">Memuat SPK...</div>
               ) : spkInfo ? (
-                <div className={"form-text mt-1 " + (spkInfo.calc_status === "over" ? "text-danger" : spkInfo.calc_status === "done" ? "text-success" : "")}>
-                  &#9432; {spkInfo.product_name} · Qty/box {spkInfo.qty_per_box} · Target {spkInfo.target_pcs} · Sudah {spkInfo.total_box} box ({spkInfo.realisasi_pcs} pcs) · Sisa {spkInfo.selisih_pcs} · {spkInfo.progress_pct}% {spkInfo.calc_status === "over" ? "— OVER" : spkInfo.calc_status === "done" ? "— DONE" : "" }
+                <>
+                  <div className={"form-text mt-1 " + (spkInfo.calc_status === "over" ? "text-danger" : spkInfo.calc_status === "done" ? "text-success" : "")}>
+                    &#9432; {spkInfo.product_name} · Qty/box {spkInfo.qty_per_box} · Target {spkInfo.target_pcs} · Sudah {spkInfo.total_box} box ({spkInfo.realisasi_pcs} pcs) · Sisa {spkInfo.selisih_pcs} · {spkInfo.progress_pct}% {spkInfo.calc_status === "over" ? "— OVER" : spkInfo.calc_status === "done" ? "— DONE" : "" }
                   {(() => {
                     const qtyNum = parseInt(qty, 10);
                     if (!qtyNum || isNaN(qtyNum)) return null;
@@ -403,7 +492,10 @@ export default function ScanForm({
                     const nextPct = spkInfo.target_pcs ? (nextPcs / spkInfo.target_pcs * 100).toFixed(1) : 0;
                     return ` → Scan ${qtyNum} box = ${nextBox} box (${nextPcs} pcs), sisa ${nextSisa}, ${nextPct}%${nextPcs > spkInfo.target_pcs ? " OVER" : nextPcs === spkInfo.target_pcs ? " DONE" : ""}`;
                   })()}
-                </div>
+                  </div>
+                  {isAsbOrInject(spkInfo, spkInfo.spk) && <div className="form-text text-muted">SPK ASB/Inject — tidak perlu scan batch</div>}
+                  {spkInfo.tanpa_rollsheet && !isAsbOrInject(spkInfo, spkInfo.spk) && <div className="form-text text-muted">SPK tanpa rollsheet — scan batch opsional</div>}
+                </>
               ) : spk.trim() ? (
                 <div className="form-text mt-1 text-warning">&#9888; SPK belum terdaftar di master — buat dulu di Input SPK</div>
               ) : (
@@ -437,6 +529,7 @@ export default function ScanForm({
             <p className="mb-1"><strong>Tanggal Produksi:</strong> {fmtProdDate(result.productionDate)}</p>
             <p className="mb-1"><strong>Jumlah:</strong> {result.count} barcode dibuat</p>
             {result.spk && <p className="mb-1"><strong>No. SPK:</strong> {result.spk}</p>}
+            {result.batchCode && <p className="mb-1"><strong>Batch:</strong> <span className="mono">{result.batchCode}</span> · <strong>{result.batchKg} kg</strong></p>}
 
             <div className="barcode-list-title">
               <i className="bi bi-upc-scan" />
@@ -469,6 +562,7 @@ export default function ScanForm({
             <p className="mb-1"><strong>Jumlah:</strong> {generated.range.length} barcode</p>
             {generated.operator && <p className="mb-1"><strong>Operator:</strong> {generated.operator}</p>}
             {generated.spk && <p className="mb-1"><strong>No. SPK:</strong> {generated.spk}</p>}
+            {generated.batchCode && <p className="mb-1"><strong>Batch:</strong> <span className="mono">{generated.batchCode}</span> · <strong>{generated.batchKg} kg</strong> <span className="text-muted">(1 batch hitung 1x)</span></p>}
 
             <div className="barcode-list-title">
               <i className="bi bi-upc-scan" />
