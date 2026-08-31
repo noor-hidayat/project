@@ -30,7 +30,7 @@ export default function SpkMonitoring({ canEdit }) {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterProduct, setFilterProduct] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-  const [kpi, setKpi] = useState({ totalSpk: 0, totalTarget: 0, totalRealisasi: 0, totalKg: 0 });
+  const [kpi, setKpi] = useState({ totalSpk: 0, totalTarget: 0, totalRealisasi: 0, totalKg: 0, totalTerpakai: 0, totalSisa: 0 });
   const [detailSpk, setDetailSpk] = useState(null);
   const [detailRows, setDetailRows] = useState([]);
   const [detailBarcodes, setDetailBarcodes] = useState([]);
@@ -67,7 +67,7 @@ export default function SpkMonitoring({ canEdit }) {
       setTotal(count ?? 0);
 
       // kpi from all rows (without pagination) — fetch aggregate via view without range
-      let kpiQuery = supabase.from("spk_monitoring").select("target_pcs, realisasi_pcs, qty_kg");
+      let kpiQuery = supabase.from("spk_monitoring").select("target_pcs, realisasi_pcs, qty_kg, total_rollsheet_used, sisa_kg");
       if (q) kpiQuery = kpiQuery.ilike("spk", `%${q}%`);
       if (filterProduct) kpiQuery = kpiQuery.eq("product_code", filterProduct);
       if (filterStatus) kpiQuery = kpiQuery.eq("calc_status", filterStatus);
@@ -76,7 +76,9 @@ export default function SpkMonitoring({ canEdit }) {
         const totalTarget = kpiRows.reduce((s, r) => s + (r.target_pcs || 0), 0);
         const totalRealisasi = kpiRows.reduce((s, r) => s + (r.realisasi_pcs || 0), 0);
         const totalKg = kpiRows.reduce((s, r) => s + parseFloat(r.qty_kg || 0), 0);
-        setKpi({ totalSpk: kpiRows.length, totalTarget, totalRealisasi, totalKg });
+        const totalTerpakai = kpiRows.reduce((s, r) => s + parseFloat(r.total_rollsheet_used || 0), 0);
+        const totalSisa = kpiRows.reduce((s, r) => s + (r.sisa_kg != null ? parseFloat(r.sisa_kg) : 0), 0);
+        setKpi({ totalSpk: kpiRows.length, totalTarget, totalRealisasi, totalKg, totalTerpakai, totalSisa });
       }
     } catch (e) {
       setError(e?.message || "Gagal memuat");
@@ -129,6 +131,9 @@ export default function SpkMonitoring({ canEdit }) {
       "Kode Produk": r.product_code,
       "Qty Kg": r.qty_kg ?? "-",
       "Tanpa Rollsheet": r.tanpa_rollsheet ? "Ya" : "Tidak",
+      "Terpakai Kg": r.total_rollsheet_used ?? 0,
+      "Sisa Kg": r.sisa_kg ?? "-",
+      "Roll %": r.rollsheet_progress_pct ?? "-",
       "Qty/Box": r.qty_per_box,
       "Target Pcs": r.target_pcs,
       "Realisasi Pcs": r.realisasi_pcs,
@@ -217,7 +222,9 @@ export default function SpkMonitoring({ canEdit }) {
         <div className="summary-card"><div className="summary-card-label">Total SPK</div><div className="summary-card-value">{kpi.totalSpk}</div></div>
         <div className="summary-card"><div className="summary-card-label">Total Target</div><div className="summary-card-value">{kpi.totalTarget.toLocaleString("id-ID")} <span className="summary-unit">pcs</span></div></div>
         <div className="summary-card"><div className="summary-card-label">Realisasi</div><div className="summary-card-value">{kpi.totalRealisasi.toLocaleString("id-ID")} <span className="summary-unit">pcs</span></div></div>
-        <div className="summary-card summary-card-total"><div className="summary-card-label">Progress</div><div className="summary-card-value">{kpi.totalTarget ? ((kpi.totalRealisasi / kpi.totalTarget) * 100).toFixed(1) : 0}%</div></div>
+        <div className="summary-card"><div className="summary-card-label">Progress</div><div className="summary-card-value">{kpi.totalTarget ? ((kpi.totalRealisasi / kpi.totalTarget) * 100).toFixed(1) : 0}%</div></div>
+        <div className="summary-card"><div className="summary-card-label">Roll Terpakai</div><div className="summary-card-value">{kpi.totalTerpakai.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="summary-unit">kg</span></div></div>
+        <div className="summary-card summary-card-total"><div className="summary-card-label">Sisa Roll</div><div className="summary-card-value">{kpi.totalSisa.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="summary-unit">kg</span></div></div>
       </div>
 
       <div className="filter-panel" style={{ marginBottom: 12 }}>
@@ -254,6 +261,8 @@ export default function SpkMonitoring({ canEdit }) {
                   <th>SPK</th>
                   <th>Produk</th>
                   <th className="text-center">Roll Kg</th>
+                  <th className="text-center">Terpakai</th>
+                  <th className="text-center">Sisa Kg</th>
                   <th className="text-center">Qty/Box</th>
                   <th className="text-center">Target</th>
                   <th className="text-center">Realisasi</th>
@@ -272,7 +281,9 @@ export default function SpkMonitoring({ canEdit }) {
                     <tr key={r.spk}>
                       <td className="cell-mono">{r.spk}{r.tanpa_rollsheet ? <span className="badge bg-secondary ms-1" title="Tanpa rollsheet">NR</span> : null}</td>
                       <td className="cell-product" title={r.product_name}>{r.product_name}<br /><span className="summary-prod-code">{r.product_code}</span></td>
-                      <td className="text-center">{r.qty_kg ?? "-"}</td>
+                      <td className="text-center">{r.qty_kg != null ? Number(r.qty_kg).toFixed(2) : "-"}</td>
+                      <td className="text-center">{r.tanpa_rollsheet ? "-" : (r.total_rollsheet_used != null ? Number(r.total_rollsheet_used).toFixed(2) : "0.00")}</td>
+                      <td className={"text-center " + (r.sisa_kg != null && r.sisa_kg < 0 ? "text-danger fw-bold" : "")}>{r.tanpa_rollsheet || r.sisa_kg == null ? "-" : Number(r.sisa_kg).toFixed(2)}</td>
                       <td className="text-center">{r.qty_per_box}</td>
                       <td className="text-center">{r.target_pcs.toLocaleString("id-ID")}</td>
                       <td className="text-center">{r.realisasi_pcs.toLocaleString("id-ID")}</td>
@@ -332,7 +343,9 @@ export default function SpkMonitoring({ canEdit }) {
             <div className="modal-body">
               <div className="modal-info">
                 <div className="modal-info-row"><span className="modal-info-label">Produk</span><span className="modal-info-value">{detailSpk.product_name} ({detailSpk.product_code})</span></div>
-                <div className="modal-info-row"><span className="modal-info-label">Roll Kg</span><span className="modal-info-value">{detailSpk.qty_kg ?? "-"} {detailSpk.qty_kg ? "kg" : ""} {detailSpk.tanpa_rollsheet ? "(tanpa rollsheet)" : ""}</span></div>
+                <div className="modal-info-row"><span className="modal-info-label">Roll Kg</span><span className="modal-info-value">{detailSpk.qty_kg != null ? Number(detailSpk.qty_kg).toFixed(2) + " kg" : "-"} {detailSpk.tanpa_rollsheet ? "(tanpa rollsheet)" : ""}</span></div>
+                <div className="modal-info-row"><span className="modal-info-label">Terpakai</span><span className="modal-info-value">{detailSpk.total_rollsheet_used != null ? Number(detailSpk.total_rollsheet_used).toFixed(2) + " kg" : "0.00 kg"} {detailSpk.rollsheet_progress_pct != null ? `(${detailSpk.rollsheet_progress_pct}%)` : ""}</span></div>
+                <div className="modal-info-row"><span className="modal-info-label">Sisa Roll</span><span className="modal-info-value">{detailSpk.sisa_kg != null ? Number(detailSpk.sisa_kg).toFixed(2) + " kg" : "-"}</span></div>
                 <div className="modal-info-row"><span className="modal-info-label">Qty/Box</span><span className="modal-info-value">{detailSpk.qty_per_box} pcs</span></div>
                 <div className="modal-info-row"><span className="modal-info-label">Target</span><span className="modal-info-value">{detailSpk.target_pcs} pcs</span></div>
                 <div className="modal-info-row"><span className="modal-info-label">Realisasi</span><span className="modal-info-value">{detailSpk.realisasi_pcs} pcs ({detailSpk.total_box} box)</span></div>
@@ -344,8 +357,8 @@ export default function SpkMonitoring({ canEdit }) {
                   <h5 className="mt-3">Transaksi ({detailRows.length})</h5>
                   <div className="table-wrap" style={{ maxHeight: 200, overflowY: "auto" }}>
                     <table className="history-table">
-                      <thead><tr><th>Trx</th><th>Tgl Prod</th><th>Shift</th><th>Qty Box</th></tr></thead>
-                      <tbody>{detailRows.map((t) => <tr key={t.trx_code}><td className="cell-mono">{t.trx_code}</td><td>{fmtDate(t.production_date)}</td><td>{t.shift}</td><td>{t.qty}</td></tr>)}</tbody>
+                      <thead><tr><th>Trx</th><th>Tgl Prod</th><th>Shift</th><th>Qty Box</th><th>Roll Kg</th></tr></thead>
+                      <tbody>{detailRows.map((t) => <tr key={t.trx_code}><td className="cell-mono">{t.trx_code}</td><td>{fmtDate(t.production_date)}</td><td>{t.shift}</td><td>{t.qty}</td><td>{t.rollsheet_kg != null ? Number(t.rollsheet_kg).toFixed(2) : "-"}</td></tr>)}</tbody>
                     </table>
                   </div>
                   <h5 className="mt-3">Barcode ({detailBarcodes.length})</h5>
