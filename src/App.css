@@ -501,17 +501,13 @@
 }
 
 .form-input.mono {
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
-  letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: 0.02em;
 }
 
 .mono {
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
-  letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: 0.02em;
 }
 
 .form-hint {
@@ -1348,44 +1344,6 @@
 
 .cell-num {
   text-align: center;
-  font-weight: 700;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
-  letter-spacing: -0.02em;
-  font-size: 0.85rem;
-}
-
-/* === Angka tabular lebih rapi di semua tabel === */
-.history-table td.text-center,
-.summary-table td.text-center,
-.summary-table td.summary-cell-total,
-.history-table td[class*="text-center"] {
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  font-size: 0.84rem;
-}
-
-.progress-bar {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  font-size: 0.72rem;
-}
-
-.summary-card-total .summary-card-value {
-  letter-spacing: -0.04em;
-}
-
-.barcode-chip code,
-.barcode-list code {
-  font-family: "JetBrains Mono", ui-monospace, Consolas, monospace;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
   font-weight: 600;
 }
 
@@ -1634,13 +1592,11 @@
 }
 
 .user-stat-value {
-  font-size: 1.35rem;
+  font-size: 1.3rem;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.05;
   color: var(--text);
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.02em;
 }
 
 .user-stat-label {
@@ -2486,6 +2442,16 @@
   margin-top: 1px;
 }
 
+/* SpkMonitoring: SPK & kode item pakai Inter biar lebih rapi (bukan mono) */
+.spk-monitoring-page .cell-mono,
+.spk-monitoring-page .summary-prod-code {
+  font-family: "Inter", sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  font-size: 0.8rem;
+  font-variant-numeric: normal;
+}
+
 .summary-cell-total {
   font-weight: 700;
   color: var(--primary);
@@ -2582,15 +2548,11 @@
 }
 
 .summary-card-value {
-  font-size: 1.55rem;
-  font-weight: 800;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: var(--text);
-  line-height: 1;
-  font-family: "Inter", sans-serif;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
-  letter-spacing: -0.035em;
-  -webkit-font-smoothing: antialiased;
 }
 
 .summary-card-total {
