@@ -35,6 +35,9 @@ body {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "cv02" 1, "cv03" 1;
+  text-rendering: optimizeLegibility;
 }
 
 #root {
