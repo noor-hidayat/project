@@ -1,9 +1,13 @@
-<!-- BEGIN:nextjs-agent-rules -->
+# Aturan repo
 
-## This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->
+- Runtime: Node.js polos (`node server.js`). Tanpa framework JS, tanpa build step.
+- Satu file server: `server.js`. Logic murni di `lib/`. CSS: Bootstrap
+  (vendor lokal di `public/bootstrap.min.css`) + custom kecil `public/style.css`.
+- UI ramah: tiap halaman ada judul + 1 baris panduan singkat, tombol/kolom
+  berbahasa sehari-hari + ikon. Tanpa paragraf penjelasan panjang.
+  Navigasi skeleton + fragment (`GET /api/fragment`), fallback full-load
+  tanpa JS.
+- DB: Supabase via HTTPS REST (`lib/supabase.js`, jalur yang sama seperti
+  task-management), schema `trace`, ID integer, kode pallet `PLT/yymm/nnnn`,
+  RPC atomik di `supabase/rpc.sql`.
+  Prisma CLI hanya untuk migrasi schema (dev). Jangan pakai role `postgres`.

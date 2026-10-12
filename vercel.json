@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
+  // DB Supabase di ap-northeast-1 (Tokyo) → function WAJIB di hnd1 juga.
+  // Default Vercel itu iad1 (Washington, AS): tiap query nyebrang separuh bumi (~600ms).
+  "regions": ["hnd1"],
+  "functions": {
+    "api/index.js": { "maxDuration": 30 }
+  }
+}

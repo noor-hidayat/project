@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  // Semua tabel aplikasi ini hidup di schema `trace` (bukan `public`),
+  // supaya tidak bentrok dengan data/tabel lain di project yang sama.
+  schemas   = ["trace"]
+}
+
+enum Role {
+  ADMIN
+  PRODUCTION
+  TRANSIT
+
+  @@schema("trace")
+}
+
+enum PalletStatus {
+  IN_PRODUCTION
+  IN_TRANSIT_WAREHOUSE
+
+  @@schema("trace")
+}
+
+enum VerificationStatus {
+  PENDING
+  COMPLETE
+  MISMATCH
+
+  @@schema("trace")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(PRODUCTION)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  createdPallets     Pallet[]              @relation("CreatedPallets")
+  verifications      TransitVerification[] @relation("VerifiedBy")
+  movements          PalletMovement[]      @relation("PerformedBy")
+  auditLogs          AuditLog[]            @relation("AuditActor")
+
+  @@map("users")
+  @@index([username])
+  @@index([role])
+  @@schema("trace")
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  productCode String   @unique @map("product_code")
+  productName String   @map("product_name")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  pallets Pallet[]
+
+  @@map("products")
+  @@index([productCode])
+  @@schema("trace")
+}
+
+model Pallet {
+  id         Int          @id @default(autoincrement())
+  palletCode String       @unique @map("pallet_code")
+  productId  Int          @map("product_id")
+  product    Product      @relation(fields: [productId], references: [id], onDelete: NoAction)
+  status     PalletStatus @default(IN_PRODUCTION)
+  notes      String?
+  createdBy  Int          @map("created_by")
+  creator    User         @relation("CreatedPallets", fields: [createdBy], references: [id], onDelete: NoAction)
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  details       PalletProductionDetail[]
+  barcodes      PalletBarcode[]
+  verifications TransitVerification[]
+  movements     PalletMovement[]
+
+  @@map("pallets")
+  @@index([palletCode])
+  @@index([productId])
+  @@index([status])
+  @@index([createdAt])
+  @@schema("trace")
+}
+
+// Counter bulanan untuk format kode PLT/yymm/nnnn (reset tiap bulan).
+model PalletMonthCounter {
+  yyyymm  String @id
+  lastSeq Int    @default(0) @map("last_seq")
+
+  @@map("pallet_month_counters")
+  @@schema("trace")
+}
+
+model PalletProductionDetail {
+  id            Int      @id @default(autoincrement())
+  palletId      Int      @map("pallet_id")
+  pallet        Pallet   @relation(fields: [palletId], references: [id], onDelete: Cascade)
+  productionDate DateTime @map("production_date") @db.Date
+  shift         String
+  boxQuantity   Int      @map("box_quantity")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  barcodes PalletBarcode[]
+
+  @@map("pallet_production_details")
+  @@index([palletId])
+  @@index([productionDate])
+  @@index([shift])
+  @@schema("trace")
+}
+
+model PalletBarcode {
+  id                Int      @id @default(autoincrement())
+  barcode           String   @unique
+  palletId          Int      @map("pallet_id")
+  pallet            Pallet   @relation(fields: [palletId], references: [id], onDelete: Cascade)
+  productionDetailId Int?    @map("production_detail_id")
+  productionDetail  PalletProductionDetail? @relation(fields: [productionDetailId], references: [id], onDelete: SetNull)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  verificationLinks TransitVerificationBarcode[]
+
+  @@map("pallet_barcodes")
+  @@index([barcode])
+  @@index([palletId])
+  @@schema("trace")
+}
+
+model TransitVerification {
+  id                 Int                @id @default(autoincrement())
+  palletId           Int                @map("pallet_id")
+  pallet             Pallet             @relation(fields: [palletId], references: [id], onDelete: Cascade)
+  verifiedBy         Int                @map("verified_by")
+  verifier           User               @relation("VerifiedBy", fields: [verifiedBy], references: [id], onDelete: NoAction)
+  verifiedAt         DateTime           @default(now()) @map("verified_at")
+  rawScanData        String?            @map("raw_scan_data") @db.Text
+  uniqueBarcodeCount Int                @map("unique_barcode_count")
+  verificationStatus VerificationStatus @default(COMPLETE) @map("verification_status")
+
+  barcodes TransitVerificationBarcode[]
+
+  @@map("transit_verifications")
+  @@index([palletId])
+  @@index([verifiedAt])
+  @@schema("trace")
+}
+
+model TransitVerificationBarcode {
+  id              Int                 @id @default(autoincrement())
+  verificationId  Int                 @map("verification_id")
+  verification    TransitVerification @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+  palletBarcodeId Int                 @map("pallet_barcode_id")
+  palletBarcode   PalletBarcode       @relation(fields: [palletBarcodeId], references: [id], onDelete: Cascade)
+
+  @@unique([verificationId, palletBarcodeId])
+  @@map("transit_verification_barcodes")
+  @@index([verificationId])
+  @@index([palletBarcodeId])
+  @@schema("trace")
+}
+
+model PalletMovement {
+  id          Int          @id @default(autoincrement())
+  palletId    Int          @map("pallet_id")
+  pallet      Pallet       @relation(fields: [palletId], references: [id], onDelete: Cascade)
+  fromLocation String      @map("from_location")
+  toLocation   String      @map("to_location")
+  fromStatus   PalletStatus @map("from_status")
+  toStatus     PalletStatus @map("to_status")
+  performedBy  Int          @map("performed_by")
+  performer    User         @relation("PerformedBy", fields: [performedBy], references: [id], onDelete: NoAction)
+  performedAt  DateTime     @default(now()) @map("performed_at")
+  notes        String?
+
+  @@map("pallet_movements")
+  @@index([palletId])
+  @@index([performedAt])
+  @@schema("trace")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int?     @map("actor_id")
+  actor     User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?  @map("entity_id")
+  detail    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@schema("trace")
+}
+
+model AppSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+  @@schema("trace")
+}
