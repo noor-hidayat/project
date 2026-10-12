@@ -6,7 +6,7 @@ App Node.js `node:http` murni + HTML/CSS/vanilla JS minimal. Tanpa Next.js, Reac
 
 ```bash
 npm install
-node server.js        # atau: npm start
+node lib/server.js    # atau: npm start
 npm run dev           # watch mode
 ```
 
@@ -40,7 +40,7 @@ Prisma CLI hanya untuk migrasi schema (dev): `npx prisma migrate deploy`.
 ## Struktur
 
 ```
-server.js          # HTTP server, routing, views, API (satu file)
+lib/server.js      # HTTP server, routing, views, API (satu file)
 lib/supabase.js    # REST client + query berbentuk (tanpa ORM)
 lib/auth.js        # session HMAC-SHA256 + cookie, bcrypt, audit
 lib/cache.js       # cache menu TTL + invalidasi
@@ -84,4 +84,4 @@ vercel --prod
 Env di Vercel Dashboard → Settings → Environment Variables: `SUPABASE_URL`,
 `SUPABASE_SERVICE_ROLE_KEY`, `AUTH_SECRET`, `APP_URL`.
 Semua route (`/`, `/pallets`, …) di-rewrite ke `api/index.js` (lihat `vercel.json`).
-Lokal tetap `node server.js`. VPS via `pm2 start ecosystem.config.js` masih bisa.
+Lokal tetap `node lib/server.js`. VPS via `pm2 start ecosystem.config.js` masih bisa.

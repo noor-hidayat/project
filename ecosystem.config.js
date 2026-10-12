@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: "trace-barcode",
-      script: "server.js",
+      script: "lib/server.js",
       cwd: "/home/deploy/Github/trace-barcode",
       instances: 1,
       exec_mode: "fork",

@@ -1,7 +1,7 @@
 # Aturan repo
 
-- Runtime: Node.js polos (`node server.js`). Tanpa framework JS, tanpa build step.
-- Satu file server: `server.js`. Logic murni di `lib/`. CSS: Bootstrap
+- Runtime: Node.js polos (`node lib/server.js`). Tanpa framework JS, tanpa build step.
+- Satu file server: `lib/server.js`. Logic murni di `lib/`. CSS: Bootstrap
   (vendor lokal di `public/bootstrap.min.css`) + custom kecil `public/style.css`.
 - UI ramah: tiap halaman ada judul + 1 baris panduan singkat, tombol/kolom
   berbahasa sehari-hari + ikon. Tanpa paragraf penjelasan panjang.

@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node --watch server.js",
-    "start": "node server.js",
+    "dev": "node --watch lib/server.js",
+    "start": "node lib/server.js",
     "db:migrate": "prisma migrate deploy",
     "reset-password": "node scripts/reset-password.js"
   },
