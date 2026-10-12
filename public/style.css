@@ -209,3 +209,13 @@ body{background:#fff;margin:0}
 .sugg-item:hover{background:var(--peach)}
 .sugg-item .mut{font-size:12px}
 .sugg-empty{padding:8px 10px;color:var(--mut);font-size:12px}
+.sugg-item.hl{background:var(--peach)}
+/* Combobox: <select> yang bisa diketik-cari (pola sama dengan autocomplete
+   kode pallet di menu Transit). Select asli disembunyikan (tetap dirender
+   agar ikut ter-submit), digantikan input teks + daftar saran. */
+.nselect.cmb>select{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:0!important;border:0!important;opacity:0;pointer-events:none;overflow:hidden;clip:rect(0 0 0 0)}
+.nselect.cmb>.cmb-in{display:block;width:100%;min-width:0;padding:5px 30px 5px 10px;font-size:13px;line-height:1.5;border:2px solid var(--ink);border-radius:8px;background:#fff;color:var(--ink);font-family:inherit;cursor:text}
+.nselect.cmb>.cmb-in:focus{outline:none;border-color:var(--ink);box-shadow:3px 3px 0 var(--peach-dk)}
+.nselect.cmb>.cmb-in::placeholder{color:var(--mut)}
+.nselect.cmb .ns-chev{pointer-events:auto;cursor:pointer}
+.nselect.cmb.block>.cmb-in,.nselect.cmb.full>.cmb-in{padding:8px 30px 8px 10px}
